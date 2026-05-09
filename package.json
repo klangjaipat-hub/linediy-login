@@ -1,0 +1,7 @@
+{
+  "name": "line-diy",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "cd preview && npm run dev -- --port 5174"
+  }
+}
