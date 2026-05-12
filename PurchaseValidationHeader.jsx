@@ -2,32 +2,47 @@ import { useState, useEffect, useRef } from "react";
 import {
   Info,
   AlertCircle,
-  CheckCircle,
+  CheckCircle2,
   Loader2,
   X,
   ShieldAlert,
   MessageCircle,
+  ArrowRight,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Mock API
+// Mock API — returns "ACTIVE" | "TRANSFER" | "NOT_FOUND" | "BANNED"
 // ---------------------------------------------------------------------------
 const mockValidateBasicId = (id) =>
   new Promise((resolve) => {
     setTimeout(() => {
       const roll = Math.random();
-      if (roll < 0.5) resolve("SUCCESS");
-      else if (roll < 0.75) resolve("NOT_FOUND");
+      if (roll < 0.40) resolve("ACTIVE");
+      else if (roll < 0.65) resolve("TRANSFER");
+      else if (roll < 0.82) resolve("NOT_FOUND");
       else resolve("BANNED");
     }, 1400);
   });
+
+const TRANSFER_OPTIONS = [
+  {
+    value: "line_thailand",
+    label: "LINE Thailand",
+    sublabel: "ชำระผ่าน LINE Thailand โดยตรง",
+  },
+  {
+    value: "other_agency",
+    label: "Other Agency",
+    sublabel: "ชำระผ่านตัวแทนขายรายอื่น",
+  },
+];
 
 // ---------------------------------------------------------------------------
 // BannedUserModal
 // ---------------------------------------------------------------------------
 function BannedUserModal({ onClose }) {
-  // trap focus inside modal
   const modalRef = useRef(null);
+
   useEffect(() => {
     const el = modalRef.current;
     if (!el) return;
@@ -53,20 +68,19 @@ function BannedUserModal({ onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="banned-modal-title"
+      aria-labelledby="banned-title"
     >
-      {/* backdrop */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* card */}
+      {/* Card */}
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200"
+        className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-200"
       >
-        {/* close */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -75,7 +89,6 @@ function BannedUserModal({ onClose }) {
           <X size={20} />
         </button>
 
-        {/* icon */}
         <div className="flex justify-center mb-5">
           <span className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
             <ShieldAlert size={32} className="text-red-500" />
@@ -83,33 +96,33 @@ function BannedUserModal({ onClose }) {
         </div>
 
         <h2
-          id="banned-modal-title"
+          id="banned-title"
           className="text-xl font-bold text-center text-slate-800 mb-2"
         >
-          Account Suspended
+          บัญชีนี้ถูกระงับการใช้งาน
         </h2>
         <p className="text-sm text-center text-slate-500 mb-1">
-          This Basic ID has been suspended and <strong>cannot make purchases</strong> at this time.
+          Basic ID นี้<strong>ไม่สามารถทำรายการสั่งซื้อได้</strong>ในขณะนี้
         </p>
         <p className="text-sm text-center text-slate-400 mb-7">
-          Please contact our admin team to resolve the issue before proceeding.
+          กรุณาติดต่อแอดมินเพื่อแก้ไขปัญหาก่อนดำเนินการต่อ
         </p>
 
         <a
           href="https://line.me/ti/p/~@sellsuki"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base transition-colors shadow-md shadow-green-200"
+          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#06C755] hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base transition-colors shadow-md shadow-green-200"
         >
           <MessageCircle size={20} />
-          Contact Admin via LINE
+          ติดต่อแอดมิน ผ่าน LINE
         </a>
 
         <button
           onClick={onClose}
           className="mt-3 w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm hover:bg-slate-50 transition-colors"
         >
-          Close
+          ปิด
         </button>
       </div>
     </div>
@@ -135,7 +148,7 @@ function Tooltip({ children, text }) {
         {children}
       </button>
       {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg bg-slate-800 text-white text-xs p-2.5 leading-relaxed shadow-lg z-20 pointer-events-none">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 text-white text-xs p-3 leading-relaxed shadow-lg z-20 pointer-events-none">
           {text}
           <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
         </span>
@@ -167,7 +180,7 @@ function RadioCard({ id, name, value, checked, onChange, label, sublabel }) {
         className="mt-0.5 accent-green-500 w-4 h-4 shrink-0"
       />
       <span>
-        <span className="block font-medium text-slate-800 text-sm leading-snug">
+        <span className="block font-semibold text-slate-800 text-sm leading-snug">
           {label}
         </span>
         {sublabel && (
@@ -179,7 +192,7 @@ function RadioCard({ id, name, value, checked, onChange, label, sublabel }) {
 }
 
 // ---------------------------------------------------------------------------
-// Animated section wrapper
+// Animated Reveal wrapper
 // ---------------------------------------------------------------------------
 function Reveal({ show, children }) {
   const [render, setRender] = useState(show);
@@ -188,7 +201,6 @@ function Reveal({ show, children }) {
   useEffect(() => {
     if (show) {
       setRender(true);
-      // next frame → trigger transition
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
     } else {
       setVisible(false);
@@ -201,7 +213,7 @@ function Reveal({ show, children }) {
   return (
     <div
       className={`transition-all duration-300 ease-in-out overflow-hidden ${
-        visible ? "opacity-100 max-h-[500px]" : "opacity-0 max-h-0"
+        visible ? "opacity-100 max-h-[600px]" : "opacity-0 max-h-0"
       }`}
     >
       {children}
@@ -210,62 +222,20 @@ function Reveal({ show, children }) {
 }
 
 // ---------------------------------------------------------------------------
-// Validation status badge
-// ---------------------------------------------------------------------------
-function StatusBadge({ status }) {
-  if (status === "SUCCESS")
-    return (
-      <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
-        <CheckCircle size={14} /> Verified
-      </span>
-    );
-  if (status === "NOT_FOUND")
-    return (
-      <span className="inline-flex items-center gap-1 text-red-500 text-xs">
-        <AlertCircle size={14} />
-        Basic ID not found in our system.{" "}
-        <a
-          href="https://line.me/ti/p/~@sellsuki"
-          target="_blank"
-          rel="noreferrer"
-          className="underline font-medium hover:text-red-700"
-        >
-          Contact Admin for help
-        </a>
-      </span>
-    );
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Transfer channel options
-// ---------------------------------------------------------------------------
-const TRANSFER_OPTIONS = [
-  { value: "line_thailand", label: "Transfer from LINE Thailand", sublabel: "ย้ายจาก LINE Thailand โดยตรง" },
-  { value: "other_agency", label: "Transfer from Other Agency", sublabel: "ย้ายจากตัวแทนขายรายอื่น" },
-  { value: "return_sellsuki", label: "Return Sellsuki Customer", sublabel: "ลูกค้าเก่า Sellsuki ที่กลับมา" },
-];
-
-// ---------------------------------------------------------------------------
 // PurchaseValidationHeader
 // ---------------------------------------------------------------------------
 export default function PurchaseValidationHeader({ onProceed }) {
-  const [accountType, setAccountType] = useState("existing"); // "existing" | "new"
+  const [accountType, setAccountType] = useState("existing");
   const [basicId, setBasicId] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [validationStatus, setValidationStatus] = useState(null); // null | "loading" | "SUCCESS" | "NOT_FOUND" | "BANNED"
+  const [status, setStatus] = useState(null); // null | "loading" | "ACTIVE" | "TRANSFER" | "NOT_FOUND" | "BANNED"
   const [transferChannel, setTransferChannel] = useState("");
   const [showBannedModal, setShowBannedModal] = useState(false);
 
-  const isVerified = validationStatus === "SUCCESS";
-  const isBanned = validationStatus === "BANNED";
-  const canProceedExisting = isVerified && transferChannel !== "";
-  const canProceedNew = accountType === "new" && displayName.trim() !== "";
-
-  // reset validation when id changes
+  // Reset validation when the ID input changes
   useEffect(() => {
-    if (validationStatus && validationStatus !== "loading") {
-      setValidationStatus(null);
+    if (status && status !== "loading") {
+      setStatus(null);
       setTransferChannel("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,16 +245,16 @@ export default function PurchaseValidationHeader({ onProceed }) {
     setAccountType(val);
     setBasicId("");
     setDisplayName("");
-    setValidationStatus(null);
+    setStatus(null);
     setTransferChannel("");
   };
 
   const handleVerify = async () => {
     if (!basicId.trim()) return;
-    setValidationStatus("loading");
+    setStatus("loading");
     setTransferChannel("");
     const result = await mockValidateBasicId(basicId.trim());
-    setValidationStatus(result);
+    setStatus(result);
     if (result === "BANNED") setShowBannedModal(true);
   };
 
@@ -292,53 +262,55 @@ export default function PurchaseValidationHeader({ onProceed }) {
     const payload =
       accountType === "new"
         ? { type: "new", displayName }
-        : { type: "existing", basicId, transferChannel };
+        : { type: "existing", basicId, transferChannel: transferChannel || "none" };
     onProceed?.(payload);
   };
 
+  const isBanned = status === "BANNED";
+  const isActive = status === "ACTIVE";
+  const isTransfer = status === "TRANSFER";
+  const canProceedNew = accountType === "new" && displayName.trim() !== "";
+  const canProceedTransfer = isTransfer && transferChannel !== "";
+
   return (
     <>
-      {/* ------------------------------------------------------------------ */}
-      {/* Modal                                                               */}
-      {/* ------------------------------------------------------------------ */}
-      {showBannedModal && <BannedUserModal onClose={() => setShowBannedModal(false)} />}
+      {showBannedModal && (
+        <BannedUserModal onClose={() => setShowBannedModal(false)} />
+      )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Header card                                                         */}
-      {/* ------------------------------------------------------------------ */}
       <section
         aria-label="Account Verification"
-        className={`w-full rounded-2xl border border-slate-200 bg-gradient-to-br from-green-50 to-slate-50 shadow-sm p-5 md:p-8 transition-opacity duration-200 ${
+        className={`max-w-5xl mx-auto bg-slate-50 rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 transition-opacity duration-200 ${
           isBanned ? "opacity-60 pointer-events-none select-none" : ""
         }`}
       >
-        {/* heading */}
-        <div className="mb-6">
+        {/* ── Header ── */}
+        <div className="mb-6 md:mb-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-green-600 mb-1">
             Step 1 of 2
           </p>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
-            Please verify your account to proceed
+            กรุณาระบุบัญชีที่ต้องการสั่งซื้อบริการ
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            กรุณายืนยันบัญชีก่อนดำเนินการสั่งซื้อ
+            Please specify the account for this purchase
           </p>
         </div>
 
-        {/* ── Phase 1 ── Account type radio group ────────────────────────── */}
-        <fieldset className="mb-5">
-          <legend className="text-sm font-semibold text-slate-700 mb-2.5">
+        {/* ── Phase 1: Account type ── */}
+        <fieldset className="mb-6">
+          <legend className="text-sm font-semibold text-slate-700 mb-3">
             Account type <span className="text-red-400">*</span>
           </legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
             <RadioCard
               id="radio-existing"
               name="accountType"
               value="existing"
               checked={accountType === "existing"}
               onChange={() => handleAccountTypeChange("existing")}
-              label="Use Existing Basic ID"
-              sublabel="ระบุ Basic ID เดิม"
+              label="ระบุ Basic ID เดิม"
+              sublabel="Use Existing Basic ID"
             />
             <RadioCard
               id="radio-new"
@@ -346,19 +318,150 @@ export default function PurchaseValidationHeader({ onProceed }) {
               value="new"
               checked={accountType === "new"}
               onChange={() => handleAccountTypeChange("new")}
-              label="Open New Account"
-              sublabel="เปิดบัญชีใหม่"
+              label="เปิดบัญชีใหม่"
+              sublabel="Open New Account"
             />
           </div>
         </fieldset>
 
-        {/* ── Phase 2 – New account: display name ────────────────────────── */}
-        <Reveal show={accountType === "new"}>
-          <div className="mb-5 space-y-4 pt-1">
+        {/* ── Phase 2a: Existing Basic ID flow ── */}
+        <Reveal show={accountType === "existing"}>
+          <div className="space-y-5">
+            {/* Input + Verify row */}
             <div>
               <label
+                htmlFor="basic-id"
+                className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-2"
+              >
+                Basic ID
+                <Tooltip text="ค้นหา Basic ID ของคุณใน LINE app → โปรไฟล์ → Basic ID โดยจะขึ้นต้นด้วย @">
+                  <Info size={14} />
+                </Tooltip>
+                <span className="text-red-400">*</span>
+              </label>
+
+              <div className="flex gap-3 max-w-2xl">
+                <input
+                  id="basic-id"
+                  type="text"
+                  value={basicId}
+                  onChange={(e) => setBasicId(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                  placeholder="@your-id"
+                  aria-describedby="basic-id-status"
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
+                    status === "NOT_FOUND"
+                      ? "border-red-400 focus:border-red-400 focus:ring-red-100"
+                      : isActive || isTransfer
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-100"
+                      : "border-slate-300 focus:border-green-500 focus:ring-green-200"
+                  }`}
+                />
+                <button
+                  onClick={handleVerify}
+                  disabled={status === "loading" || !basicId.trim()}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
+                >
+                  {status === "loading" ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      ตรวจสอบ…
+                    </>
+                  ) : (
+                    "ตรวจสอบ"
+                  )}
+                </button>
+              </div>
+
+              {/* NOT_FOUND error */}
+              <div id="basic-id-status" className="mt-2 min-h-[20px]">
+                {status === "NOT_FOUND" && (
+                  <p className="flex items-center gap-1.5 text-sm text-red-500">
+                    <AlertCircle size={14} className="shrink-0" />
+                    ไม่พบ Basic ID นี้ในระบบ —{" "}
+                    <a
+                      href="https://line.me/ti/p/~@sellsuki"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-medium hover:text-red-700"
+                    >
+                      ติดต่อแอดมิน
+                    </a>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ACTIVE: Seamless Open Purchase banner */}
+            <Reveal show={isActive}>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={22} className="text-green-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-green-800">
+                      พบข้อมูลบัญชี {basicId} ในระบบเรียบร้อยแล้ว
+                    </p>
+                    <p className="text-xs text-green-700 mt-0.5 leading-relaxed">
+                      คุณสามารถเลือกซื้อแพ็กเกจด้านล่างได้ทันที — ไม่ต้องโอนย้ายบัญชี
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleProceed}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-sm transition-colors shadow-sm shadow-green-200 whitespace-nowrap shrink-0"
+                >
+                  <ArrowRight size={16} />
+                  ดำเนินการต่อ
+                </button>
+              </div>
+            </Reveal>
+
+            {/* TRANSFER: Previous payment channel */}
+            <Reveal show={isTransfer}>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 md:p-6">
+                <fieldset>
+                  <legend className="text-sm font-bold text-slate-800 mb-0.5">
+                    ช่องทางชำระเงินครั้งก่อน{" "}
+                    <span className="text-red-400">*</span>
+                  </legend>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Previous Payment Channel — กรุณาเลือกช่องทางที่ใช้ชำระเงินในการสั่งซื้อครั้งก่อน
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mb-5">
+                    {TRANSFER_OPTIONS.map((opt) => (
+                      <RadioCard
+                        key={opt.value}
+                        id={`transfer-${opt.value}`}
+                        name="transferChannel"
+                        value={opt.value}
+                        checked={transferChannel === opt.value}
+                        onChange={() => setTransferChannel(opt.value)}
+                        label={opt.label}
+                        sublabel={opt.sublabel}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleProceed}
+                    disabled={!canProceedTransfer}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-sm shadow-green-100"
+                  >
+                    <CheckCircle2 size={16} />
+                    ดำเนินการต่อ →
+                  </button>
+                </fieldset>
+              </div>
+            </Reveal>
+          </div>
+        </Reveal>
+
+        {/* ── Phase 2b: New account flow ── */}
+        <Reveal show={accountType === "new"}>
+          <div className="space-y-4">
+            <div className="max-w-2xl">
+              <label
                 htmlFor="display-name"
-                className="block text-sm font-semibold text-slate-700 mb-1.5"
+                className="block text-sm font-semibold text-slate-700 mb-2"
               >
                 Display Name (ชื่อแสดงผล){" "}
                 <span className="text-red-400">*</span>
@@ -369,114 +472,23 @@ export default function PurchaseValidationHeader({ onProceed }) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="e.g. Jayna's Boutique"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
               />
-              <p className="mt-1.5 text-xs text-slate-400">
-                This will be visible to your customers on LINE OA.
+              <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                แอดมินจะทำการสร้าง Basic ID ให้ท่านหลังจากทำรายการสั่งซื้อสำเร็จ
+                <br />
+                Our admin will create your Basic ID after the purchase is complete.
               </p>
             </div>
-
             <button
               onClick={handleProceed}
               disabled={!canProceedNew}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
             >
-              Proceed to Order →
+              <ArrowRight size={16} />
+              ดำเนินการต่อ →
             </button>
-            <p className="text-xs text-slate-400 mt-1">
-              Our admin will create your Basic ID after the purchase is complete.
-            </p>
           </div>
-        </Reveal>
-
-        {/* ── Phase 2 – Existing account: Basic ID input + verify ─────────── */}
-        <Reveal show={accountType === "existing"}>
-          <div className="mb-5 pt-1">
-            <label
-              htmlFor="basic-id"
-              className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-1.5"
-            >
-              Basic ID
-              <Tooltip text="Find your Basic ID in LINE app → Profile → Basic ID. It starts with @.">
-                <Info size={14} />
-              </Tooltip>
-              <span className="text-red-400">*</span>
-            </label>
-
-            <div className="flex gap-2">
-              <input
-                id="basic-id"
-                type="text"
-                value={basicId}
-                onChange={(e) => setBasicId(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleVerify()}
-                placeholder="@your-id"
-                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition ${
-                  validationStatus === "NOT_FOUND"
-                    ? "border-red-400 focus:border-red-400 focus:ring-red-100"
-                    : validationStatus === "SUCCESS"
-                    ? "border-green-500 focus:border-green-500 focus:ring-green-100"
-                    : "border-slate-300 focus:border-green-500 focus:ring-green-200"
-                } bg-white`}
-                aria-describedby="basic-id-status"
-              />
-              <button
-                onClick={handleVerify}
-                disabled={validationStatus === "loading" || !basicId.trim()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
-              >
-                {validationStatus === "loading" ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    Verifying…
-                  </>
-                ) : (
-                  "Verify"
-                )}
-              </button>
-            </div>
-
-            {/* status message */}
-            <div id="basic-id-status" className="mt-2 min-h-[18px]">
-              <StatusBadge status={validationStatus} />
-            </div>
-          </div>
-
-          {/* ── Phase 3 – Transfer channel (only after SUCCESS) ──────────── */}
-          <Reveal show={isVerified}>
-            <fieldset className="mt-1 mb-5 rounded-xl border border-green-200 bg-white p-4">
-              <legend className="px-1 text-sm font-semibold text-slate-700">
-                Previous Payment Channel{" "}
-                <span className="text-red-400">*</span>
-              </legend>
-              <p className="text-xs text-slate-400 mb-3 mt-0.5">
-                ช่องทางที่ใช้ชำระเงินในการสั่งซื้อครั้งก่อน
-              </p>
-              <div className="space-y-2.5">
-                {TRANSFER_OPTIONS.map((opt) => (
-                  <RadioCard
-                    key={opt.value}
-                    id={`transfer-${opt.value}`}
-                    name="transferChannel"
-                    value={opt.value}
-                    checked={transferChannel === opt.value}
-                    onChange={() => setTransferChannel(opt.value)}
-                    label={opt.label}
-                    sublabel={opt.sublabel}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={handleProceed}
-                disabled={!canProceedExisting}
-                className="mt-5 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
-              >
-                <CheckCircle size={16} />
-                Proceed to Order →
-              </button>
-            </fieldset>
-          </Reveal>
         </Reveal>
       </section>
     </>
