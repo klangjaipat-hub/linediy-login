@@ -4,7 +4,7 @@ import {
   Zap, Home, ShoppingCart, ClipboardList, CreditCard, Gift, FileText,
   BookOpen, LogOut, Lock, Check, ArrowLeft, Link2, Loader2, X,
   CheckCircle2, Unlock, Sparkles, UserCog, UserCheck, UserPlus,
-  Settings, ChevronLeft,
+  Settings, ChevronLeft, LogIn,
 } from 'lucide-react'
 import PurchaseValidationHeader from './PurchaseValidationHeader'
 
@@ -23,8 +23,8 @@ const MOCK_USERS = {
 }
 
 const MOCK_CONNECTED_IDS = [
-  { id: '@shop_alpha', name: 'Shop Alpha', avatar: 'SA', plan: 'Free'    },
-  { id: '@shop_beta',  name: 'Shop Beta',  avatar: 'SB', plan: 'Premium' },
+  { id: '@333aaaa',    name: 'LINE by Sellsuki', plan: 'Free'    },
+  { id: '@mybrand-th', name: 'My Brand Store',   plan: 'Premium' },
 ]
 
 const PACKAGES = [
@@ -70,7 +70,6 @@ function LinkAccountModal({ onClose, onUnlock }) {
   const [basicId, setBasicId] = useState('')
   const [phase,   setPhase]   = useState('input')
   const inputRef = useRef(null)
-
   useEffect(() => { inputRef.current?.focus() }, [])
 
   const handleVerify = async () => {
@@ -84,20 +83,16 @@ function LinkAccountModal({ onClose, onUnlock }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={phase === 'input' ? onClose : undefined} />
-      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         {phase !== 'success' && (
-          <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors" aria-label="Close">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"><X size={20} /></button>
         )}
         <div className="flex justify-center mb-5">
           <span className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-500 ${phase === 'success' ? 'bg-green-100' : 'bg-[#06C755]/10'}`}>
             {phase === 'success' ? <CheckCircle2 size={28} className="text-green-600" /> : <Link2 size={26} className="text-[#06C755]" />}
           </span>
         </div>
-        <h2 className="text-xl font-bold text-center text-slate-800 mb-1">
-          {phase === 'success' ? '🎉 เชื่อมต่อสำเร็จ!' : 'เชื่อมต่อ Basic ID'}
-        </h2>
+        <h2 className="text-xl font-bold text-center text-slate-800 mb-1">{phase === 'success' ? '🎉 เชื่อมต่อสำเร็จ!' : 'เชื่อมต่อ Basic ID'}</h2>
         <p className="text-sm text-center text-slate-500 mb-6">
           {phase === 'success' ? `เชื่อมต่อ Basic ID: ${basicId} สำเร็จ!` : 'ระบุ Basic ID เพื่อปลดล็อคฟีเจอร์ทั้งหมดและเข้าสู่ Full Mode'}
         </p>
@@ -113,7 +108,7 @@ function LinkAccountModal({ onClose, onUnlock }) {
             <input ref={inputRef} type="text" value={basicId} onChange={e => setBasicId(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleVerify()} placeholder="@shop123"
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition mb-3" />
             <button onClick={handleVerify} disabled={phase === 'loading' || !basicId.trim()}
-              className="w-full py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] active:bg-[#049a42] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-green-100">
+              className="w-full py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-green-100">
               {phase === 'loading' ? <><Loader2 size={16} className="animate-spin" /> กำลังตรวจสอบ…</> : <><Link2 size={16} /> ตรวจสอบและใช้งาน</>}
             </button>
             <p className="text-xs text-slate-400 text-center mt-3">Basic ID ที่ Active จะได้รับ Full Mode ทันที — ไม่ต้องยืนยัน OTP</p>
@@ -124,222 +119,254 @@ function LinkAccountModal({ onClose, onUnlock }) {
   )
 }
 
-// ─── ManageBasicIdView ────────────────────────────────────────────────────────
+// ─── ManageBasicIdCard — centered card with 4 internal steps ─────────────────
+//
+// Steps: ACCOUNT_LIST → TYPE_SELECTION → VALIDATION_FORM
+//                                      → LOADING (→ auto-redirect)
+// New users skip ACCOUNT_LIST and start at TYPE_SELECTION.
 
-function ManageBasicIdView({ onRedirectToPurchase, onUnlockFullMode }) {
-  const [hasIds,       setHasIds]       = useState(true)
-  const [flow,         setFlow]         = useState('ID_LIST') // 'ID_LIST' | 'SELECTION' | 'CURRENT_INPUT' | 'REDIRECTING'
-  const [basicId,      setBasicId]      = useState('')
-  const [verifyStatus, setVerifyStatus] = useState(null) // null | 'loading' | 'success'
+function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRedirectToPurchase }) {
+  const [step,       setStep]       = useState(initialStep ?? (hasIds ? 'ACCOUNT_LIST' : 'TYPE_SELECTION'))
+  const [selectedId, setSelectedId] = useState(hasIds ? MOCK_CONNECTED_IDS[0].id : null)
+  const [basicId,    setBasicId]    = useState('')
+  const [verify,     setVerify]     = useState(null) // null | 'loading' | 'success'
+  const [fading,     setFading]     = useState(false)
+  const [stepKey,    setStepKey]    = useState(0)
 
-  // Debug toggle handler — resets the whole flow
-  const handleSimulate = (newHasIds) => {
-    setHasIds(newHasIds)
-    setFlow(newHasIds ? 'ID_LIST' : 'SELECTION')
-    setBasicId('')
-    setVerifyStatus(null)
+  // Auto-redirect when LOADING
+  useEffect(() => {
+    if (step !== 'LOADING') return
+    const t = setTimeout(() => onRedirectToPurchase?.(), 2200)
+    return () => clearTimeout(t)
+  }, [step, onRedirectToPurchase])
+
+  // Animated step transition
+  const goto = (next) => {
+    setFading(true)
+    setTimeout(() => {
+      setStep(next)
+      setStepKey(k => k + 1)
+      setFading(false)
+    }, 180)
+  }
+
+  const handleLogin = () => {
+    // "เข้าสู่บัญชี" — treat selected ID as account login
+    const acc = MOCK_CONNECTED_IDS.find(a => a.id === selectedId)
+    onUnlockFullMode?.(selectedId, acc?.name)
+    onExit?.()
   }
 
   const handleVerify = async () => {
     if (!basicId.trim()) return
-    setVerifyStatus('loading')
+    setVerify('loading')
     await new Promise(r => setTimeout(r, 1200))
-    setVerifyStatus('success')
-    setTimeout(() => onUnlockFullMode?.(basicId.trim()), 1600)
+    setVerify('success')
+    setTimeout(() => {
+      onUnlockFullMode?.(basicId.trim())
+      onExit?.()
+    }, 1600)
   }
 
-  // Auto-redirect on REDIRECTING state
-  useEffect(() => {
-    if (flow !== 'REDIRECTING') return
-    const t = setTimeout(() => onRedirectToPurchase?.(), 2000)
-    return () => clearTimeout(t)
-  }, [flow, onRedirectToPurchase])
-
   return (
-    <div className="max-w-3xl">
+    <div className="w-full max-w-xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10">
+        {/* ── Fading content wrapper ── */}
+        <div
+          key={stepKey}
+          className={`transition-all duration-200 ease-in-out ${fading ? 'opacity-0 translate-y-1' : 'opacity-100 translate-y-0'}`}
+        >
 
-      {/* ── Debug scenario toggle ── */}
-      <div className="mb-6 flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3">
-        <Settings size={14} className="text-slate-400 shrink-0" />
-        <span className="text-xs text-slate-400 font-semibold uppercase tracking-widest mr-1">Demo</span>
-        {[
-          { val: true,  label: 'Existing User (2 IDs)' },
-          { val: false, label: 'New User (0 IDs)'      },
-        ].map(({ val, label }) => (
-          <button key={label} onClick={() => handleSimulate(val)}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              hasIds === val ? 'bg-[#06C755] text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
-            }`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ══ ID_LIST ══ */}
-      {flow === 'ID_LIST' && (
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">บัญชี Basic ID ของคุณ</h1>
-            <p className="text-sm text-slate-500 mt-1">Your connected Basic IDs</p>
-          </div>
-
-          <div className="space-y-3 mb-6">
-            {MOCK_CONNECTED_IDS.map(acc => (
-              <div key={acc.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4">
-                <div className="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center shrink-0 font-bold text-green-700 text-sm">
-                  {acc.avatar}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 text-sm">{acc.name}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">{acc.id}</p>
-                </div>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                  acc.plan === 'Premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {acc.plan}
+          {/* ══ ACCOUNT_LIST ══ */}
+          {step === 'ACCOUNT_LIST' && (
+            <>
+              {/* Icon */}
+              <div className="flex justify-center mb-6">
+                <span className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
+                  <UserCog size={26} className="text-[#06C755]" />
                 </span>
               </div>
-            ))}
-          </div>
 
-          <button
-            onClick={() => setFlow('SELECTION')}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] active:bg-[#049a42] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
-          >
-            <Plus size={16} />
-            เพิ่ม/เชื่อมต่อ Basic ID อื่น
-          </button>
-        </div>
-      )}
+              <h2 className="text-xl font-bold text-slate-800 text-center mb-1">เลือก Basic ID</h2>
+              <p className="text-sm text-slate-500 text-center mb-7">กรุณาเลือก Basic ID ของท่าน</p>
 
-      {/* ══ SELECTION ══ */}
-      {flow === 'SELECTION' && (
-        <div>
-          {/* Back (only if came from ID_LIST) */}
-          {hasIds && (
-            <button onClick={() => setFlow('ID_LIST')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-5 transition-colors">
-              <ChevronLeft size={16} /> กลับ
-            </button>
+              {/* Radio list */}
+              <div className="space-y-3 mb-7">
+                {MOCK_CONNECTED_IDS.map(acc => (
+                  <label
+                    key={acc.id}
+                    htmlFor={`radio-${acc.id}`}
+                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                      selectedId === acc.id
+                        ? 'border-[#06C755] bg-green-50'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <input
+                      id={`radio-${acc.id}`}
+                      type="radio"
+                      name="selectedBasicId"
+                      value={acc.id}
+                      checked={selectedId === acc.id}
+                      onChange={() => setSelectedId(acc.id)}
+                      className="accent-green-500 w-4 h-4 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800 text-sm">{acc.id}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">({acc.name})</p>
+                    </div>
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                      acc.plan === 'Premium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                    }`}>
+                      {acc.plan}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Primary CTA */}
+              <button
+                onClick={handleLogin}
+                disabled={!selectedId}
+                className="w-full py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] active:bg-[#049a42] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-md shadow-green-100 mb-3"
+              >
+                <LogIn size={16} />
+                เข้าสู่บัญชี
+              </button>
+
+              {/* Secondary CTA */}
+              <button
+                onClick={() => goto('TYPE_SELECTION')}
+                className="w-full py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Plus size={15} />
+                เพิ่ม/เชื่อมต่อ LINE OA
+              </button>
+            </>
           )}
 
-          <div className="mb-7">
-            <h1 className="text-2xl font-bold text-slate-800">เลือกประเภทการดำเนินการ</h1>
-            <p className="text-sm text-slate-500 mt-1">Select Action Type</p>
-          </div>
+          {/* ══ TYPE_SELECTION ══ */}
+          {step === 'TYPE_SELECTION' && (
+            <>
+              {/* Back (only if came from ACCOUNT_LIST) */}
+              {hasIds && step === 'TYPE_SELECTION' && (
+                <button onClick={() => goto('ACCOUNT_LIST')} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-5 transition-colors">
+                  <ChevronLeft size={15} /> กลับ
+                </button>
+              )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card 1 — Current Customer */}
-            <button
-              onClick={() => setFlow('CURRENT_INPUT')}
-              className="group text-left bg-white border-2 border-slate-200 hover:border-[#06C755] rounded-2xl p-6 transition-all hover:shadow-md cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-xl bg-green-50 group-hover:bg-green-100 flex items-center justify-center mb-4 transition-colors">
-                <UserCheck size={24} className="text-[#06C755]" />
+              <h2 className="text-xl font-bold text-slate-800 mb-1">กรุณาเลือกประเภทบัญชี</h2>
+              <p className="text-sm text-slate-500 mb-7">Select Account Type</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Card 1 — ลูกค้าปัจจุบัน */}
+                <button
+                  onClick={() => goto('VALIDATION_FORM')}
+                  className="group text-left bg-white border-2 border-slate-200 hover:border-[#06C755] rounded-2xl p-5 transition-all hover:shadow-md cursor-pointer"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-green-50 group-hover:bg-green-100 flex items-center justify-center mb-4 transition-colors">
+                    <UserCheck size={22} className="text-[#06C755]" />
+                  </div>
+                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">ลูกค้าปัจจุบัน</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    สำหรับบัญชีที่เคยซื้อแพ็กเกจกับ Sellsuki แล้ว
+                  </p>
+                </button>
+
+                {/* Card 2 — ลูกค้าใหม่ */}
+                <button
+                  onClick={() => goto('LOADING')}
+                  className="group text-left bg-white border-2 border-slate-200 hover:border-blue-400 rounded-2xl p-5 transition-all hover:shadow-md cursor-pointer"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-4 transition-colors">
+                    <UserPlus size={22} className="text-blue-500" />
+                  </div>
+                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">ลูกค้าใหม่</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    เปิดบัญชีใหม่ / ย้ายบัญชีเข้า Sellsuki
+                  </p>
+                </button>
               </div>
-              <p className="font-bold text-slate-800 text-base mb-1">ลูกค้าปัจจุบัน</p>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                สำหรับบัญชีที่เคยซื้อแพ็กเกจกับ Sellsuki แล้ว
-              </p>
-              <p className="text-xs text-slate-300 mt-1">Current Customer</p>
-            </button>
+            </>
+          )}
 
-            {/* Card 2 — New Customer */}
-            <button
-              onClick={() => setFlow('REDIRECTING')}
-              className="group text-left bg-white border-2 border-slate-200 hover:border-blue-400 rounded-2xl p-6 transition-all hover:shadow-md cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-4 transition-colors">
-                <UserPlus size={24} className="text-blue-500" />
-              </div>
-              <p className="font-bold text-slate-800 text-base mb-1">ลูกค้าใหม่</p>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                สำหรับลูกค้าที่ต้องการเปิดบัญชีใหม่/ย้ายบัญชีเข้า Sellsuki
-              </p>
-              <p className="text-xs text-slate-300 mt-1">New Customer</p>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ══ CURRENT_INPUT ══ */}
-      {flow === 'CURRENT_INPUT' && (
-        <div>
-          <button onClick={() => setFlow('SELECTION')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-5 transition-colors">
-            <ChevronLeft size={16} /> กลับ
-          </button>
-
-          <div className="mb-7">
-            <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1 mb-3">
-              <UserCheck size={13} className="text-green-600" />
-              <span className="text-xs font-semibold text-green-700">ลูกค้าปัจจุบัน</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">ตรวจสอบ Basic ID</h1>
-            <p className="text-sm text-slate-500 mt-1">ระบุ Basic ID เพื่อยืนยันบัญชีและเปิดใช้งาน Full Mode</p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-xl">
-            <label htmlFor="manage-basic-id" className="block text-sm font-semibold text-slate-700 mb-2">
-              Basic ID <span className="text-red-400">*</span>
-            </label>
-
-            <div className="flex gap-3 mb-3">
-              <input
-                id="manage-basic-id"
-                type="text"
-                value={basicId}
-                onChange={e => { setBasicId(e.target.value); setVerifyStatus(null) }}
-                onKeyDown={e => e.key === 'Enter' && handleVerify()}
-                placeholder="@yourshop"
-                disabled={verifyStatus === 'success'}
-                className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
-                  verifyStatus === 'success'
-                    ? 'border-green-500 focus:border-green-500 focus:ring-green-100 bg-green-50'
-                    : 'border-slate-300 focus:border-green-500 focus:ring-green-200'
-                }`}
-              />
-              <button
-                onClick={handleVerify}
-                disabled={verifyStatus === 'loading' || verifyStatus === 'success' || !basicId.trim()}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
-              >
-                {verifyStatus === 'loading'
-                  ? <><Loader2 size={15} className="animate-spin" /> ตรวจสอบ…</>
-                  : 'ตรวจสอบ'
-                }
+          {/* ══ VALIDATION_FORM ══ */}
+          {step === 'VALIDATION_FORM' && (
+            <>
+              <button onClick={() => goto('TYPE_SELECTION')} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-5 transition-colors">
+                <ChevronLeft size={15} /> กลับ
               </button>
-            </div>
 
-            {/* Success result */}
-            {verifyStatus === 'success' && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in duration-300">
-                <CheckCircle2 size={18} className="text-green-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-bold text-green-800">
-                    ✅ ตรวจสอบพบ Basic ID: {basicId} ในระบบ
-                  </p>
-                  <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
-                    <Sparkles size={11} /> กำลังเปิดใช้งาน Full Mode…
-                  </p>
-                </div>
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1 mb-4">
+                <UserCheck size={13} className="text-green-600" />
+                <span className="text-xs font-semibold text-green-700">ลูกค้าปัจจุบัน</span>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* ══ REDIRECTING ══ */}
-      {flow === 'REDIRECTING' && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-5">
-            <Loader2 size={28} className="text-blue-500 animate-spin" />
-          </div>
-          <p className="font-bold text-slate-800 text-lg mb-2">กำลังนำทางไป…</p>
-          <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
-            กำลังพาคุณไปยังหน้า "ซื้อบริการ" เพื่อดำเนินการเปิดบัญชีใหม่ / ย้ายค่าย…
-          </p>
-          <p className="text-xs text-slate-300 mt-3">Redirecting to Buy Service page...</p>
+              <h2 className="text-xl font-bold text-slate-800 mb-1">ตรวจสอบ Basic ID</h2>
+              <p className="text-sm text-slate-500 mb-7">กรอก Basic ID เพื่อยืนยันบัญชีและเชื่อมต่อ</p>
+
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={basicId}
+                    onChange={e => { setBasicId(e.target.value); if (verify) setVerify(null) }}
+                    onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                    placeholder="@your-id"
+                    disabled={verify === 'success'}
+                    className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
+                      verify === 'success'
+                        ? 'border-green-500 bg-green-50 focus:ring-green-100'
+                        : 'border-slate-300 focus:border-green-500 focus:ring-green-200'
+                    }`}
+                  />
+                  <button
+                    onClick={handleVerify}
+                    disabled={verify === 'loading' || verify === 'success' || !basicId.trim()}
+                    className="px-5 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
+                  >
+                    {verify === 'loading'
+                      ? <Loader2 size={16} className="animate-spin" />
+                      : 'ตรวจสอบ'
+                    }
+                  </button>
+                </div>
+
+                {/* Success state */}
+                {verify === 'success' && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <CheckCircle2 size={18} className="text-green-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-green-800">✅ เชื่อมต่อสำเร็จ</p>
+                      <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                        <Sparkles size={11} /> กำลังกลับสู่ Full Mode Dashboard…
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ══ LOADING ══ */}
+          {step === 'LOADING' && (
+            <div className="py-10 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-6">
+                <Loader2 size={30} className="text-blue-500 animate-spin" />
+              </div>
+              <p className="font-bold text-slate-800 text-lg mb-2">กำลังนำทาง…</p>
+              <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
+                กำลังพาคุณไปยังหน้า "ซื้อบริการ"<br />
+                เพื่อดำเนินการเปิดบัญชีใหม่ / ย้ายค่าย…
+              </p>
+              <p className="text-xs text-slate-300 mt-3">Redirecting to Buy Service page...</p>
+            </div>
+          )}
+
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -364,7 +391,6 @@ function LoginScreen({ onLogin }) {
         <h1 className="text-3xl font-bold text-white tracking-wide">LINE</h1>
         <p className="text-white/70 text-sm mt-1">Official Account Manager</p>
       </div>
-
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
         <h2 className="text-xl font-semibold text-gray-800 text-center mb-1">ยินดีต้อนรับ</h2>
         <p className="text-gray-400 text-sm text-center mb-6">เข้าสู่ระบบด้วย LINE Account ของคุณ</p>
@@ -383,11 +409,8 @@ function LoginScreen({ onLogin }) {
           </p>
         </div>
         <button onClick={handleLogin} disabled={loading}
-          className="w-full bg-[#06C755] hover:bg-[#05b34c] active:bg-[#049a42] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-70">
-          {loading
-            ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> กำลังเข้าสู่ระบบ…</>
-            : <><MessageCircle className="w-5 h-5" /> Login with LINE</>
-          }
+          className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-70">
+          {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> กำลังเข้าสู่ระบบ…</> : <><MessageCircle className="w-5 h-5" /> Login with LINE</>}
         </button>
         <p className="text-xs text-gray-300 text-center mt-4">ระบบจะใช้ข้อมูล LINE Account ของคุณในการเข้าสู่ระบบ</p>
       </div>
@@ -443,15 +466,22 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [locked,        setLocked]        = useState(initLocked)
   const [account,       setAccount]       = useState(initAccount)
   const [justUnlocked,  setJustUnlocked]  = useState(false)
+  // Demo toggle for ManageBasicId (simulate 0 or 2 connected IDs)
+  const [manageHasIds,  setManageHasIds]  = useState(true)
+  // Force-entry step when navigating from dashboard CTA (null = use default)
+  const [manageEntryStep, setManageEntryStep] = useState(null)
+
+  const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
   const handlePurchase = () => {
     setToast('กำลังไปยังหน้าตรวจสอบ Basic ID…')
     setTimeout(() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }, 900)
   }
 
-  const handleUnlock = (linkedId) => {
+  const handleUnlock = (linkedId, name) => {
+    const label    = name ?? linkedId
     const initials = linkedId.replace('@', '').slice(0, 2).toUpperCase()
-    setAccount({ id: linkedId, name: linkedId, avatar: initials, plan: 'Free' })
+    setAccount({ id: linkedId, name: label, avatar: initials, plan: 'Free' })
     setLocked(false)
     setShowLinkModal(false)
     setJustUnlocked(true)
@@ -462,6 +492,13 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const handleNavClick = (label) => {
     setActiveMenu(label)
     setShowPurchase(false)
+    setManageEntryStep(null)
+  }
+
+  const handleGoManageNewUser = () => {
+    setActiveMenu('จัดการ Basic ID')
+    setShowPurchase(false)
+    setManageEntryStep('TYPE_SELECTION')
   }
 
   const handleRedirectToPurchase = () => {
@@ -476,7 +513,6 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
 
       {/* ── Sidebar ── */}
       <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-sm">
-
         {/* Logo + mode badge */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-3">
@@ -512,16 +548,6 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
           </div>
         )}
 
-        {/* Link Account trigger (Locked Mode only) */}
-        {locked && (
-          <div className="px-3 py-2.5 border-b border-gray-100">
-            <button onClick={() => setShowLinkModal(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#06C755]/10 hover:bg-[#06C755]/20 border border-[#06C755]/30 text-[#06C755] text-xs font-semibold transition-colors">
-              <Plus className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">เพิ่ม/เชื่อมต่อ Basic ID เดิม</span>
-            </button>
-          </div>
-        )}
 
         {/* Nav */}
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -531,161 +557,148 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             return (
               <button key={label} onClick={() => !isItemLocked && handleNavClick(label)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-500 ${
-                  isJustOpened ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
-                  : isItemLocked ? 'opacity-40 cursor-not-allowed text-gray-400'
-                  : activeMenu === label ? 'bg-green-50 text-[#06C755]'
-                  : 'text-gray-600 hover:bg-slate-50 hover:text-gray-800'
+                  isJustOpened   ? 'bg-green-50 text-green-700 ring-1 ring-green-200' :
+                  isItemLocked   ? 'opacity-40 cursor-not-allowed text-gray-400' :
+                  activeMenu === label && !showPurchase ? 'bg-green-50 text-[#06C755]' :
+                  'text-gray-600 hover:bg-slate-50 hover:text-gray-800'
                 }`}>
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1 text-left">{label}</span>
-                {isItemLocked
-                  ? <Lock className="w-3 h-3 text-gray-300 shrink-0" />
-                  : isJustOpened ? <Unlock className="w-3 h-3 text-green-500 shrink-0 animate-pulse" />
-                  : null
-                }
+                {isItemLocked ? <Lock className="w-3 h-3 text-gray-300 shrink-0" /> : isJustOpened ? <Unlock className="w-3 h-3 text-green-500 shrink-0 animate-pulse" /> : null}
               </button>
             )
           })}
         </nav>
 
-        {/* Bottom links — จัดการ Basic ID sits above the rest */}
+        {/* Bottom */}
         <div className="px-2 py-3 border-t border-gray-100 space-y-0.5">
-          {/* ── จัดการ Basic ID (nav item) ── */}
-          <button
-            onClick={() => handleNavClick('จัดการ Basic ID')}
+          <button onClick={() => handleNavClick('จัดการ Basic ID')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeMenu === 'จัดการ Basic ID'
-                ? 'bg-green-50 text-[#06C755]'
-                : 'text-gray-600 hover:bg-slate-50 hover:text-gray-800'
-            }`}
-          >
+              isManageView ? 'bg-green-50 text-[#06C755]' : 'text-gray-600 hover:bg-slate-50 hover:text-gray-800'
+            }`}>
             <UserCog className="w-4 h-4 shrink-0" />
             จัดการ Basic ID
           </button>
-
-          {/* Static links */}
           {[{ icon: BookOpen, label: 'คู่มือการใช้งาน' }, { icon: MessageCircle, label: 'ติดต่อเรา' }].map(({ icon: Icon, label }) => (
             <button key={label} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-slate-50 hover:text-gray-700 transition-colors">
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <Icon className="w-4 h-4 shrink-0" /> {label}
             </button>
           ))}
           <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors">
-            <LogOut className="w-4 h-4 shrink-0" />
-            ออกจากระบบ
+            <LogOut className="w-4 h-4 shrink-0" /> ออกจากระบบ
           </button>
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-8">
+      {/* ══════════════════════════════════════════════════════════════
+           MANAGE BASIC ID — exclusive centered-card layout
+      ══════════════════════════════════════════════════════════════ */}
+      {isManageView ? (
+        <main className="flex-1 bg-[#f8f9fa] flex flex-col items-center justify-center p-8 min-h-screen">
+          {/* The centered card */}
+          <ManageBasicIdCard
+            key={`${manageHasIds ? 'has' : 'none'}-${manageEntryStep ?? 'default'}`}
+            hasIds={manageHasIds}
+            initialStep={manageEntryStep}
+            onExit={() => handleNavClick('หน้าหลัก')}
+            onUnlockFullMode={handleUnlock}
+            onRedirectToPurchase={handleRedirectToPurchase}
+          />
+        </main>
 
-          {/* ── Purchase sub-page ── */}
-          {showPurchase ? (
-            <div>
-              <button onClick={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก') }}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
-                <ArrowLeft className="w-4 h-4" /> กลับหน้า Dashboard
-              </button>
-              <h2 className="text-xl font-bold text-gray-800 mb-5">ซื้อบริการ — ระบุ Basic ID</h2>
-              <PurchaseValidationHeader onProceed={(p) => alert('Order payload:\n' + JSON.stringify(p, null, 2))} />
-            </div>
+      ) : (
+      /* ══════════════════════════════════════════════════════════════
+           ALL OTHER ROUTES — normal scrollable layout
+      ══════════════════════════════════════════════════════════════ */
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-8">
 
-          /* ── Manage Basic ID view ── */
-          ) : activeMenu === 'จัดการ Basic ID' ? (
-            <div>
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <UserCog size={20} className="text-slate-600" />
-                  <h1 className="text-2xl font-bold text-slate-800">จัดการ Basic ID</h1>
+            {/* Purchase sub-page */}
+            {showPurchase ? (
+              <div>
+                <button onClick={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก') }}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
+                  <ArrowLeft className="w-4 h-4" /> กลับหน้า Dashboard
+                </button>
+                <h2 className="text-xl font-bold text-gray-800 mb-5">ซื้อบริการ — ระบุ Basic ID</h2>
+                <PurchaseValidationHeader onProceed={(p) => alert('Order payload:\n' + JSON.stringify(p, null, 2))} />
+              </div>
+
+            ) : (
+              /* Dashboard home (and any other non-purchase route) */
+              <>
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold text-gray-800">สวัสดีครับ คุณ{user.name}</h1>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {locked ? 'กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน' : 'ยินดีต้อนรับกลับมาสู่ LINE OA Manager'}
+                  </p>
                 </div>
-                <p className="text-sm text-slate-500">Manage your connected Basic IDs</p>
-              </div>
-              <ManageBasicIdView
-                onRedirectToPurchase={handleRedirectToPurchase}
-                onUnlockFullMode={handleUnlock}
-              />
-            </div>
 
-          /* ── Dashboard home ── */
-          ) : (
-            <>
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">สวัสดีครับ คุณ{user.name}</h1>
-                <p className="text-gray-400 text-sm mt-1">
-                  {locked ? 'กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน' : 'ยินดีต้อนรับกลับมาสู่ LINE OA Manager'}
-                </p>
-              </div>
-
-              {/* Locked Mode Banner */}
-              {locked && (
-                <div className="mb-7 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <Lock className="w-4 h-4 text-amber-600" />
+                {/* Locked banner */}
+                {locked && (
+                  <div className="mb-7 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-amber-600" /></div>
+                      <div>
+                        <p className="font-bold text-amber-800 text-sm">คุณอยู่ใน Locked Mode</p>
+                        <p className="text-xs text-amber-600 mt-0.5">เชื่อมต่อ Basic ID เพื่อปลดล็อคเมนูทั้งหมด</p>
+                      </div>
                     </div>
+                    <button onClick={handleGoManageNewUser}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100 whitespace-nowrap shrink-0">
+                      <Plus className="w-4 h-4" /> เพิ่ม/เชื่อมต่อ Basic ID เดิม
+                    </button>
+                  </div>
+                )}
+
+                {/* Full Mode celebration */}
+                {justUnlocked && !locked && (
+                  <div className="mb-7 bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0"><Unlock className="w-4 h-4 text-green-600" /></div>
                     <div>
-                      <p className="font-bold text-amber-800 text-sm">คุณอยู่ใน Locked Mode</p>
-                      <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">เชื่อมต่อ Basic ID เพื่อปลดล็อคเมนู รายการสั่งซื้อ, แจ้งชำระเงิน, สิทธิพิเศษ และ เอกสาร</p>
+                      <p className="font-bold text-green-800 text-sm flex items-center gap-1.5"><Sparkles size={14} /> Full Mode เปิดใช้งานแล้ว!</p>
+                      <p className="text-xs text-green-600 mt-0.5">เมนูทั้งหมดพร้อมใช้งานเรียบร้อยแล้ว</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowLinkModal(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100 whitespace-nowrap shrink-0">
-                    <Plus className="w-4 h-4" /> เพิ่ม/เชื่อมต่อ Basic ID เดิม
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* Full Mode unlock celebration */}
-              {justUnlocked && !locked && (
-                <div className="mb-7 bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3 animate-in fade-in duration-500">
-                  <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-                    <Unlock className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-green-800 text-sm flex items-center gap-1.5"><Sparkles size={14} /> Full Mode เปิดใช้งานแล้ว!</p>
-                    <p className="text-xs text-green-600 mt-0.5">เมนูทั้งหมดพร้อมใช้งานเรียบร้อยแล้ว</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Package Status */}
-              <section className="mb-8">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">สถานะแพ็กเกจปัจจุบัน</h2>
-                <div className="space-y-3">
-                  {PACKAGES.map(({ name, status, icon: Icon }) => (
-                    <div key={name} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-green-600" /></div>
-                        <span className="font-medium text-gray-700 text-sm">{name}</span>
+                {/* Packages */}
+                <section className="mb-8">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">สถานะแพ็กเกจปัจจุบัน</h2>
+                  <div className="space-y-3">
+                    {PACKAGES.map(({ name, status, icon: Icon }) => (
+                      <div key={name} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-green-600" /></div>
+                          <span className="font-medium text-gray-700 text-sm">{name}</span>
+                        </div>
+                        <span className="text-[#06C755] font-semibold text-sm">{status}</span>
                       </div>
-                      <span className="text-[#06C755] font-semibold text-sm">{status}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    ))}
+                  </div>
+                </section>
 
-              {/* Service Grid */}
-              <section>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">กรุณาเลือกบริการที่ต้องการ</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {SERVICES.map(({ id, title, icon: Icon, desc, color, bg }) => (
-                    <div key={id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
-                      <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center`}><Icon className={`w-6 h-6 ${color}`} /></div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800 text-xs leading-tight">{title}</p>
-                        <p className="text-gray-400 text-xs mt-1">{desc}</p>
+                {/* Services */}
+                <section>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">กรุณาเลือกบริการที่ต้องการ</h2>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {SERVICES.map(({ id, title, icon: Icon, desc, color, bg }) => (
+                      <div key={id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
+                        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center`}><Icon className={`w-6 h-6 ${color}`} /></div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800 text-xs leading-tight">{title}</p>
+                          <p className="text-gray-400 text-xs mt-1">{desc}</p>
+                        </div>
+                        <button onClick={handlePurchase} className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-semibold py-2 rounded-lg transition-colors">สั่งซื้อ</button>
                       </div>
-                      <button onClick={handlePurchase} className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-semibold py-2 rounded-lg transition-colors">สั่งซื้อ</button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-      </main>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
+          </div>
+        </main>
+      )}
     </div>
   )
 }
@@ -705,9 +718,9 @@ export default function PrePurchaseJourney() {
     else setStep('account-routing')
   }
 
-  const handleAccountSelect = (account) => { setSelectedAccount(account); setIsLocked(false); setStep('dashboard') }
-  const handleAddNew        = ()         => { setSelectedAccount(null);    setIsLocked(true);  setStep('dashboard') }
-  const handleLogout        = ()         => { setStep('login'); setUser(null); setSelectedAccount(null); setIsLocked(false) }
+  const handleAccountSelect = (acc) => { setSelectedAccount(acc); setIsLocked(false); setStep('dashboard') }
+  const handleAddNew        = ()    => { setSelectedAccount(null); setIsLocked(true); setStep('dashboard') }
+  const handleLogout        = ()    => { setStep('login'); setUser(null); setSelectedAccount(null); setIsLocked(false) }
 
   if (step === 'login')           return <LoginScreen onLogin={handleLogin} />
   if (step === 'account-routing') return <AccountSelectionScreen user={user} onSelect={handleAccountSelect} onAddNew={handleAddNew} />
