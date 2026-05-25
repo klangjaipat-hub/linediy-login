@@ -597,9 +597,9 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
         <main className="flex-1 bg-[#f8f9fa] flex flex-col items-center justify-center p-8 min-h-screen">
           {/* The centered card */}
           <ManageBasicIdCard
-            key={`${manageHasIds ? 'has' : 'none'}-${manageEntryStep ?? 'default'}`}
-            hasIds={manageHasIds}
-            initialStep={manageEntryStep}
+            key={`${locked ? 'locked' : manageHasIds ? 'has' : 'none'}-${manageEntryStep ?? 'default'}`}
+            hasIds={locked ? false : manageHasIds}
+            initialStep={locked ? 'TYPE_SELECTION' : manageEntryStep}
             onExit={() => handleNavClick('หน้าหลัก')}
             onUnlockFullMode={handleUnlock}
             onRedirectToPurchase={handleRedirectToPurchase}
@@ -640,8 +640,8 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                     <div className="flex items-start gap-3">
                       <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-amber-600" /></div>
                       <div>
-                        <p className="font-bold text-amber-800 text-sm">คุณอยู่ใน Locked Mode</p>
-                        <p className="text-xs text-amber-600 mt-0.5">เชื่อมต่อ Basic ID เพื่อปลดล็อคเมนูทั้งหมด</p>
+                        <p className="font-bold text-amber-800 text-sm">ปลดล็อกประสบการณ์เต็มรูปแบบ</p>
+                        <p className="text-xs text-amber-600 mt-0.5">ปลดล็อกการใช้งานทุกฟีเจอร์ในระบบ เพียงเชื่อมต่อ Basic ID</p>
                       </div>
                     </div>
                     <button onClick={handleGoManageNewUser}
