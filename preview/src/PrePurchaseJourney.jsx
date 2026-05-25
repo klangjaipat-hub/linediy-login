@@ -34,10 +34,10 @@ const PACKAGES = [
 ]
 
 const SERVICES = [
-  { id: 'broadcast', title: 'BROADCAST PACKAGE', icon: Radio,         desc: 'ส่งข้อความหา Follower',   color: 'text-blue-500',   bg: 'bg-blue-50' },
-  { id: 'premium',   title: 'PREMIUM ID',        icon: Crown,         desc: 'Premium LINE Official ID', color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: 'chat',      title: 'OA CHAT PACKAGE',   icon: MessageSquare, desc: 'Chat Package สำหรับ OA',  color: 'text-green-500',  bg: 'bg-green-50' },
-  { id: 'api',       title: 'MESSAGING API',     icon: Zap,           desc: 'API Integration',          color: 'text-purple-500', bg: 'bg-purple-50' },
+  { id: 'broadcast', title: 'BROADCAST PACKAGE', icon: Radio,         desc: 'ส่งข้อความหา Follower',   color: 'text-blue-500',   bg: 'bg-blue-50',    price: '฿1,500', unit: '/เดือน' },
+  { id: 'premium',   title: 'PREMIUM ID',        icon: Crown,         desc: 'Premium LINE Official ID', color: 'text-yellow-500', bg: 'bg-yellow-50',  price: '฿3,000', unit: '/ปี'    },
+  { id: 'chat',      title: 'OA CHAT PACKAGE',   icon: MessageSquare, desc: 'Chat Package สำหรับ OA',  color: 'text-green-500',  bg: 'bg-green-50',   price: '฿990',   unit: '/เดือน' },
+  { id: 'api',       title: 'MESSAGING API',     icon: Zap,           desc: 'API Integration',          color: 'text-purple-500', bg: 'bg-purple-50',  price: '฿2,500', unit: '/เดือน' },
 ]
 
 const SIDEBAR_ITEMS = [
@@ -456,6 +456,138 @@ function AccountSelectionScreen({ user, onSelect, onAddNew }) {
   )
 }
 
+// ─── Purchase Step 2: Order Summary ──────────────────────────────────────────
+
+function OrderSummaryStep({ service, accountData, onBack, onConfirm }) {
+  const Icon = service?.icon ?? Radio
+  return (
+    <section className="max-w-5xl mx-auto bg-slate-50 rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
+      {/* Header */}
+      <div className="mb-6 md:mb-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-green-600 mb-1">Step 2 of 2</p>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">สรุปคำสั่งซื้อ</h1>
+        <p className="text-sm text-slate-500 mt-1">Order Summary — กรุณาตรวจสอบรายละเอียดก่อนยืนยัน</p>
+      </div>
+
+      <div className="space-y-4 max-w-2xl">
+        {/* Service card */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-xl ${service?.bg ?? 'bg-slate-100'} flex items-center justify-center shrink-0`}>
+            <Icon className={`w-6 h-6 ${service?.color ?? 'text-slate-500'}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-slate-800 text-sm">{service?.title ?? '—'}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{service?.desc ?? ''}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-bold text-slate-800 text-lg">{service?.price ?? '—'}</p>
+            <p className="text-xs text-slate-400">{service?.unit ?? ''}</p>
+          </div>
+        </div>
+
+        {/* Account info */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">ข้อมูลบัญชี</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">ประเภทบัญชี</span>
+              <span className="font-semibold text-slate-800">
+                {accountData?.type === 'new' ? 'เปิดบัญชีใหม่' : 'ระบุ Basic ID เดิม'}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">ชื่อแสดงผล</span>
+              <span className="font-semibold text-slate-800">{accountData?.displayName || '—'}</span>
+            </div>
+            {accountData?.type === 'existing' && (
+              <>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">Basic ID</span>
+                  <span className="font-semibold text-slate-800">{accountData?.basicId || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">ช่องทางชำระเงินเดิม</span>
+                  <span className="font-semibold text-slate-800">
+                    {accountData?.paymentChannel === 'line_thailand' ? 'LINE Thailand' : accountData?.agencyName || '—'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Total row */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+          <span className="font-semibold text-slate-700 text-sm">ยอดรวม</span>
+          <span className="font-bold text-green-700 text-xl">{service?.price ?? '—'}<span className="text-sm font-normal text-green-600 ml-1">{service?.unit ?? ''}</span></span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            onClick={onBack}
+            className="px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-100 transition-colors"
+          >
+            ← แก้ไขข้อมูล
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] active:bg-[#049a42] text-white font-bold text-sm transition-colors shadow-md shadow-green-100"
+          >
+            <CheckCircle2 size={16} />
+            ยืนยันคำสั่งซื้อ
+          </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Purchase Step 3: Success ────────────────────────────────────────────────
+
+function PurchaseSuccessScreen({ service, onBackToDashboard }) {
+  const orderRef = `ORD-${Date.now().toString().slice(-6)}`
+  return (
+    <div className="max-w-lg mx-auto py-10 text-center">
+      {/* Icon */}
+      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <CheckCircle2 size={40} className="text-[#06C755]" />
+      </div>
+
+      <h1 className="text-2xl font-bold text-slate-800 mb-2">ส่งคำสั่งซื้อสำเร็จ!</h1>
+      <p className="text-slate-500 text-sm mb-1">ทีมงานได้รับคำสั่งซื้อของคุณแล้ว</p>
+      <p className="text-slate-400 text-sm mb-6">และจะติดต่อกลับภายใน 1–2 วันทำการ</p>
+
+      {/* Order ref */}
+      <div className="inline-flex items-center gap-2 bg-slate-100 rounded-xl px-5 py-2.5 mb-8">
+        <span className="text-xs text-slate-400 font-medium">เลขที่อ้างอิง</span>
+        <span className="font-bold text-slate-700 text-sm tracking-wider">{orderRef}</span>
+      </div>
+
+      {/* Service summary pill */}
+      {service && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 mb-8 text-left">
+          <div className={`w-10 h-10 rounded-xl ${service.bg} flex items-center justify-center shrink-0`}>
+            <service.icon className={`w-5 h-5 ${service.color}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-slate-800 text-sm">{service.title}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{service.desc}</p>
+          </div>
+          <p className="font-bold text-slate-700 text-sm shrink-0">{service.price}<span className="font-normal text-slate-400">{service.unit}</span></p>
+        </div>
+      )}
+
+      <button
+        onClick={onBackToDashboard}
+        className="w-full py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm transition-colors shadow-md shadow-green-100"
+      >
+        กลับหน้าหลัก
+      </button>
+    </div>
+  )
+}
+
 // ─── Screen 3: Dashboard ──────────────────────────────────────────────────────
 
 function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLocked, onLogout }) {
@@ -470,11 +602,18 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [manageHasIds,  setManageHasIds]  = useState(true)
   // Force-entry step when navigating from dashboard CTA (null = use default)
   const [manageEntryStep, setManageEntryStep] = useState(null)
+  // Purchase flow state
+  const [purchaseStep,    setPurchaseStep]    = useState(1)   // 1 | 2 | 'success'
+  const [orderPayload,    setOrderPayload]    = useState(null)
+  const [selectedService, setSelectedService] = useState(null)
 
   const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
-  const handlePurchase = () => {
-    setToast('กำลังไปยังหน้าตรวจสอบ Basic ID…')
+  const handlePurchase = (service) => {
+    setSelectedService(service)
+    setPurchaseStep(1)
+    setOrderPayload(null)
+    setToast('กำลังไปยังหน้าสั่งซื้อ…')
     setTimeout(() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }, 900)
   }
 
@@ -493,6 +632,8 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setActiveMenu(label)
     setShowPurchase(false)
     setManageEntryStep(null)
+    setPurchaseStep(1)
+    setOrderPayload(null)
   }
 
   const handleGoManageNewUser = () => {
@@ -616,12 +757,48 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             {/* Purchase sub-page */}
             {showPurchase ? (
               <div>
-                <button onClick={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก') }}
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> กลับหน้า Dashboard
-                </button>
-                <h2 className="text-xl font-bold text-gray-800 mb-5">ซื้อบริการ — ระบุ Basic ID</h2>
-                <PurchaseValidationHeader onProceed={(p) => alert('Order payload:\n' + JSON.stringify(p, null, 2))} />
+                {/* Back button — hidden on success screen */}
+                {purchaseStep !== 'success' && (
+                  <button
+                    onClick={() => {
+                      if (purchaseStep === 2) { setPurchaseStep(1) }
+                      else { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
+                    <ArrowLeft className="w-4 h-4" />
+                    {purchaseStep === 2 ? 'กลับขั้นตอนที่แล้ว' : 'กลับหน้า Dashboard'}
+                  </button>
+                )}
+
+                {/* Page title — hidden on success screen */}
+                {purchaseStep !== 'success' && (
+                  <h2 className="text-xl font-bold text-gray-800 mb-5">
+                    ซื้อบริการ — {selectedService?.title ?? 'ระบุข้อมูล'}
+                  </h2>
+                )}
+
+                {/* Step 1 */}
+                {purchaseStep === 1 && (
+                  <PurchaseValidationHeader onProceed={(p) => { setOrderPayload(p); setPurchaseStep(2) }} />
+                )}
+
+                {/* Step 2 */}
+                {purchaseStep === 2 && (
+                  <OrderSummaryStep
+                    service={selectedService}
+                    accountData={orderPayload}
+                    onBack={() => setPurchaseStep(1)}
+                    onConfirm={() => setPurchaseStep('success')}
+                  />
+                )}
+
+                {/* Success */}
+                {purchaseStep === 'success' && (
+                  <PurchaseSuccessScreen
+                    service={selectedService}
+                    onBackToDashboard={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }}
+                  />
+                )}
               </div>
 
             ) : (
@@ -682,14 +859,14 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                 <section>
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">กรุณาเลือกบริการที่ต้องการ</h2>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {SERVICES.map(({ id, title, icon: Icon, desc, color, bg }) => (
+                    {SERVICES.map(({ id, title, icon: Icon, desc, color, bg, price, unit }) => (
                       <div key={id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
                         <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center`}><Icon className={`w-6 h-6 ${color}`} /></div>
                         <div className="flex-1">
                           <p className="font-semibold text-gray-800 text-xs leading-tight">{title}</p>
                           <p className="text-gray-400 text-xs mt-1">{desc}</p>
                         </div>
-                        <button onClick={handlePurchase} className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-semibold py-2 rounded-lg transition-colors">สั่งซื้อ</button>
+                        <button onClick={() => handlePurchase({ id, title, icon: Icon, desc, color, bg, price, unit })} className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-semibold py-2 rounded-lg transition-colors">สั่งซื้อ</button>
                       </div>
                     ))}
                   </div>
