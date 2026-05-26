@@ -662,18 +662,6 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             </div>
             <span className="font-bold text-gray-800 text-sm">LINE OA Manager</span>
           </div>
-          {locked ? (
-            <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-              <Lock className="w-3 h-3 text-amber-600 shrink-0" />
-              <span className="text-xs text-amber-700 font-semibold">Locked Mode</span>
-            </div>
-          ) : (
-            <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all duration-700 ${justUnlocked ? 'bg-green-100 border border-green-300' : 'bg-green-50 border border-green-100'}`}>
-              <Unlock className={`w-3 h-3 shrink-0 ${justUnlocked ? 'text-green-600' : 'text-green-500'}`} />
-              <span className={`text-xs font-semibold ${justUnlocked ? 'text-green-700' : 'text-green-600'}`}>Full Mode</span>
-              {justUnlocked && <Sparkles className="w-3 h-3 text-green-500 animate-pulse" />}
-            </div>
-          )}
         </div>
 
         {/* Account pill */}
@@ -760,35 +748,17 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                 {/* Back button — hidden on success screen */}
                 {purchaseStep !== 'success' && (
                   <button
-                    onClick={() => {
-                      if (purchaseStep === 2) { setPurchaseStep(1) }
-                      else { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }
-                    }}
+                    onClick={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
-                    <ArrowLeft className="w-4 h-4" />
-                    {purchaseStep === 2 ? 'กลับขั้นตอนที่แล้ว' : 'กลับหน้า Dashboard'}
+                    <ArrowLeft className="w-4 h-4" /> กลับหน้า Dashboard
                   </button>
                 )}
 
-                {/* Page title — hidden on success screen */}
-                {purchaseStep !== 'success' && (
-                  <h2 className="text-xl font-bold text-gray-800 mb-5">
-                    ซื้อบริการ — {selectedService?.title ?? 'ระบุข้อมูล'}
-                  </h2>
-                )}
-
-                {/* Step 1 */}
+                {/* Service form */}
                 {purchaseStep === 1 && (
-                  <PurchaseValidationHeader onProceed={(p) => { setOrderPayload(p); setPurchaseStep(2) }} />
-                )}
-
-                {/* Step 2 */}
-                {purchaseStep === 2 && (
-                  <OrderSummaryStep
+                  <PurchaseValidationHeader
                     service={selectedService}
-                    accountData={orderPayload}
-                    onBack={() => setPurchaseStep(1)}
-                    onConfirm={() => setPurchaseStep('success')}
+                    onProceed={(p) => { setOrderPayload(p); setPurchaseStep('success') }}
                   />
                 )}
 

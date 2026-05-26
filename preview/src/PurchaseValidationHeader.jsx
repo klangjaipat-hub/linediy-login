@@ -1,94 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  Info,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  X,
-  ShieldAlert,
-  MessageCircle,
-  ArrowRight,
-  Building2,
+  Info, Radio, Crown, MessageSquare, Zap,
+  CheckCircle2, Building2, ChevronRight,
 } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// BannedUserModal
-// ---------------------------------------------------------------------------
-function BannedUserModal({ onClose }) {
-  const modalRef = useRef(null);
-
-  useEffect(() => {
-    const el = modalRef.current;
-    if (!el) return;
-    const focusable = el.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable[0]?.focus();
-    const trap = (e) => {
-      if (e.key !== "Tab") return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
-        e.preventDefault();
-        (e.shiftKey ? last : first).focus();
-      }
-    };
-    el.addEventListener("keydown", trap);
-    return () => el.removeEventListener("keydown", trap);
-  }, []);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="banned-title"
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        ref={modalRef}
-        className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-200"
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
-          aria-label="Close"
-        >
-          <X size={20} />
-        </button>
-        <div className="flex justify-center mb-5">
-          <span className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
-            <ShieldAlert size={32} className="text-red-500" />
-          </span>
-        </div>
-        <h2 id="banned-title" className="text-xl font-bold text-center text-slate-800 mb-2">
-          บัญชีนี้ถูกระงับการใช้งาน
-        </h2>
-        <p className="text-sm text-center text-slate-500 mb-1">
-          Basic ID นี้<strong>ไม่สามารถทำรายการสั่งซื้อได้</strong>ในขณะนี้
-        </p>
-        <p className="text-sm text-center text-slate-400 mb-7">
-          กรุณาติดต่อแอดมินเพื่อแก้ไขปัญหาก่อนดำเนินการต่อ
-        </p>
-        <a
-          href="https://line.me/ti/p/~@sellsuki"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#06C755] hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base transition-colors shadow-md shadow-green-200"
-        >
-          <MessageCircle size={20} />
-          ติดต่อแอดมิน ผ่าน LINE
-        </a>
-        <button
-          onClick={onClose}
-          className="mt-3 w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm hover:bg-slate-50 transition-colors"
-        >
-          ปิด
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Tooltip
@@ -99,12 +13,9 @@ function Tooltip({ children, text }) {
     <span className="relative inline-flex items-center">
       <button
         type="button"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        className="text-slate-400 hover:text-slate-600 transition-colors"
-        aria-label="More info"
+        onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+        className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="More info"
       >
         {children}
       </button>
@@ -123,290 +34,447 @@ function Tooltip({ children, text }) {
 // ---------------------------------------------------------------------------
 function RadioCard({ id, name, value, checked, onChange, label, sublabel }) {
   return (
-    <label
-      htmlFor={id}
-      className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 px-4 py-3.5 transition-all select-none ${
-        checked
-          ? "border-green-500 bg-green-50 shadow-sm"
-          : "border-slate-200 bg-white hover:border-slate-300"
-      }`}
-    >
-      <input
-        id={id}
-        type="radio"
-        name={name}
-        value={value}
-        checked={checked}
-        onChange={onChange}
-        className="mt-0.5 accent-green-500 w-4 h-4 shrink-0"
-      />
+    <label htmlFor={id} className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 px-4 py-3.5 transition-all select-none ${
+      checked ? "border-green-500 bg-green-50 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
+    }`}>
+      <input id={id} type="radio" name={name} value={value} checked={checked} onChange={onChange}
+        className="mt-0.5 accent-green-500 w-4 h-4 shrink-0" />
       <span>
         <span className="block font-semibold text-slate-800 text-sm leading-snug">{label}</span>
-        {sublabel && (
-          <span className="block text-xs text-slate-500 mt-0.5">{sublabel}</span>
-        )}
+        {sublabel && <span className="block text-xs text-slate-500 mt-0.5">{sublabel}</span>}
       </span>
     </label>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Animated Reveal wrapper
+// Reveal
 // ---------------------------------------------------------------------------
 function Reveal({ show, children }) {
   const [render, setRender] = useState(show);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
-    if (show) {
-      setRender(true);
-      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-    } else {
-      setVisible(false);
-      const t = setTimeout(() => setRender(false), 300);
-      return () => clearTimeout(t);
-    }
+    if (show) { setRender(true); requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true))); }
+    else { setVisible(false); const t = setTimeout(() => setRender(false), 300); return () => clearTimeout(t); }
   }, [show]);
-
   if (!render) return null;
   return (
-    <div
-      className={`transition-all duration-300 ease-in-out overflow-hidden ${
-        visible ? "opacity-100 max-h-[800px]" : "opacity-0 max-h-0"
-      }`}
-    >
+    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${visible ? "opacity-100 max-h-[600px]" : "opacity-0 max-h-0"}`}>
       {children}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// PurchaseValidationHeader
+// useAccountForm — shared account state hook
 // ---------------------------------------------------------------------------
-export default function PurchaseValidationHeader({ onProceed }) {
-  const [accountType, setAccountType] = useState("existing");
+function useAccountForm() {
+  const [accountType,     setAccountType]     = useState("new");
+  const [displayName,     setDisplayName]     = useState("");
+  const [basicId,         setBasicId]         = useState("");
+  const [paymentChannel,  setPaymentChannel]  = useState("");
+  const [agencyName,      setAgencyName]      = useState("");
 
-  // Existing flow fields
-  const [displayName, setDisplayName]   = useState("");
-  const [basicId, setBasicId]           = useState("");
-  const [paymentChannel, setPaymentChannel] = useState(""); // "line_thailand" | "other_agency"
-  const [agencyName, setAgencyName]     = useState("");
-
-  // New account flow fields
-  const [newDisplayName, setNewDisplayName] = useState("");
-
-  const handleAccountTypeChange = (val) => {
-    setAccountType(val);
-    setDisplayName("");
-    setBasicId("");
-    setPaymentChannel("");
-    setAgencyName("");
-    setNewDisplayName("");
+  const handleTypeChange = (val) => {
+    setAccountType(val); setDisplayName(""); setBasicId(""); setPaymentChannel(""); setAgencyName("");
+  };
+  const handleChannelChange = (val) => {
+    setPaymentChannel(val); if (val !== "other_agency") setAgencyName("");
   };
 
-  const handlePaymentChannelChange = (val) => {
-    setPaymentChannel(val);
-    if (val !== "other_agency") setAgencyName("");
+  const isValid =
+    displayName.trim() !== "" && (
+      accountType === "new" ||
+      (basicId.trim() !== "" && paymentChannel !== "" &&
+        (paymentChannel !== "other_agency" || agencyName.trim() !== ""))
+    );
+
+  const payload =
+    accountType === "new"
+      ? { type: "new", displayName }
+      : { type: "existing", displayName, basicId, paymentChannel, agencyName: paymentChannel === "other_agency" ? agencyName : "" };
+
+  return {
+    accountType, handleTypeChange,
+    displayName, setDisplayName,
+    basicId,     setBasicId,
+    paymentChannel, handleChannelChange,
+    agencyName,  setAgencyName,
+    isValid, payload,
   };
+}
 
-  const handleProceed = () => {
-    const payload =
-      accountType === "new"
-        ? { type: "new", displayName: newDisplayName }
-        : {
-            type: "existing",
-            displayName,
-            basicId,
-            paymentChannel,
-            agencyName: paymentChannel === "other_agency" ? agencyName : "",
-          };
-    onProceed?.(payload);
-  };
+// ---------------------------------------------------------------------------
+// AccountSection — shared account fields used across all forms
+// ---------------------------------------------------------------------------
+function AccountSection({ acc }) {
+  const { accountType, handleTypeChange, displayName, setDisplayName,
+          basicId, setBasicId, paymentChannel, handleChannelChange,
+          agencyName, setAgencyName } = acc;
+  return (
+    <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
+      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
 
-  // ── Validation ──
-  const existingValid =
-    displayName.trim() !== "" &&
-    basicId.trim() !== "" &&
-    paymentChannel !== "" &&
-    (paymentChannel !== "other_agency" || agencyName.trim() !== "");
+      {/* Account type */}
+      <fieldset>
+        <legend className="text-sm font-semibold text-slate-700 mb-3">
+          ประเภทบัญชี <span className="text-red-400">*</span>
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          <RadioCard id="acc-new"      name="accountType" value="new"      checked={accountType === "new"}      onChange={() => handleTypeChange("new")}      label="เปิดบัญชีใหม่"    sublabel="Open New Account"       />
+          <RadioCard id="acc-existing" name="accountType" value="existing" checked={accountType === "existing"} onChange={() => handleTypeChange("existing")} label="ระบุ Basic ID เดิม" sublabel="Use Existing Basic ID" />
+        </div>
+      </fieldset>
 
-  const canProceedNew = newDisplayName.trim() !== "";
+      {/* Display Name */}
+      <div>
+        <label htmlFor="acc-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
+          ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+        </label>
+        <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+          placeholder="เช่น My Brand Store"
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+      </div>
+
+      {/* Existing-only fields */}
+      <Reveal show={accountType === "existing"}>
+        <div className="space-y-4 pt-1">
+          {/* Basic ID */}
+          <div>
+            <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-2">
+              Basic ID
+              <Tooltip text="ค้นหา Basic ID ใน LINE app → โปรไฟล์ → Basic ID (ขึ้นต้นด้วย @)"><Info size={14} /></Tooltip>
+              <span className="text-red-400">*</span>
+            </label>
+            <input id="acc-basic-id" type="text" value={basicId} onChange={e => setBasicId(e.target.value)}
+              placeholder="@your-id"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+          </div>
+          {/* Payment channel */}
+          <fieldset>
+            <legend className="text-sm font-semibold text-slate-700 mb-1">
+              ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
+            </legend>
+            <p className="text-xs text-slate-400 mb-3">Previous Payment Channel</p>
+            <div className="grid grid-cols-2 gap-3">
+              <RadioCard id="pay-line"   name="paymentChannel" value="line_thailand" checked={paymentChannel === "line_thailand"} onChange={() => handleChannelChange("line_thailand")} label="ชำระผ่าน LINE Thailand" sublabel="โดยตรงกับ LINE Thailand" />
+              <RadioCard id="pay-agency" name="paymentChannel" value="other_agency"  checked={paymentChannel === "other_agency"}  onChange={() => handleChannelChange("other_agency")}  label="ชำระผ่าน Agency เจ้าอื่น" sublabel="ผ่านตัวแทนขายรายอื่น" />
+            </div>
+            <Reveal show={paymentChannel === "other_agency"}>
+              <div className="mt-3">
+                <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                  <Building2 size={14} className="text-slate-400" /> ชื่อ Agency <span className="text-red-400">*</span>
+                </label>
+                <input id="acc-agency-name" type="text" value={agencyName} onChange={e => setAgencyName(e.target.value)}
+                  placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+              </div>
+            </Reveal>
+          </fieldset>
+        </div>
+      </Reveal>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PlanCard — generic selectable card with feature list
+// ---------------------------------------------------------------------------
+function PlanCard({ id, name, checked, onChange, price, unit, features, accent, badge }) {
+  return (
+    <label htmlFor={id} className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all select-none block ${
+      checked ? `border-${accent}-500 bg-${accent}-50 shadow-md` : "border-slate-200 bg-white hover:border-slate-300"
+    }`}>
+      <input id={id} type="radio" checked={checked} onChange={onChange} className="sr-only" />
+      {badge && (
+        <span className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-0.5 rounded-full bg-${accent}-100 text-${accent}-700`}>
+          {badge}
+        </span>
+      )}
+      <p className={`font-bold text-base mb-1 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>{name}</p>
+      <p className={`text-2xl font-extrabold mb-0.5 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>
+        {price}<span className="text-sm font-normal text-slate-400 ml-1">{unit}</span>
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {features.map((f, i) => (
+          <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+            <CheckCircle2 size={13} className={checked ? `text-${accent}-500` : "text-slate-300"} />
+            {f}
+          </li>
+        ))}
+      </ul>
+    </label>
+  );
+}
+
+// ===========================================================================
+// FORM 1 — BROADCAST PACKAGE
+// ===========================================================================
+function BroadcastForm({ onProceed }) {
+  const acc = useAccountForm();
+  const [plan, setPlan] = useState(""); // "basic" | "pro"
+
+  const canSubmit = acc.isValid && plan !== "";
 
   return (
-    <>
-      <section aria-label="Account Verification" className="max-w-5xl mx-auto bg-slate-50 rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
-        {/* ── Header ── */}
-        <div className="mb-6 md:mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-600 mb-1">
-            Step 1 of 2
-          </p>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-snug">
-            กรุณาระบุบัญชีที่ต้องการสั่งซื้อบริการ
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Please specify the account for this purchase
-          </p>
+    <div className="space-y-6 max-w-2xl">
+      {/* Service header */}
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+          <Radio className="w-6 h-6 text-blue-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-800 text-lg leading-tight">BROADCAST PACKAGE</h2>
+          <p className="text-sm text-slate-400">เลือกแพ็กเกจที่เหมาะกับขนาดธุรกิจของคุณ</p>
+        </div>
+      </div>
+
+      {/* Account */}
+      <AccountSection acc={acc} />
+
+      {/* Plan selection */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-3">
+          เลือกแพ็กเกจ <span className="text-red-400">*</span>
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <PlanCard
+            id="plan-basic" checked={plan === "basic"} onChange={() => setPlan("basic")}
+            name="Basic" price="฿1,500" unit="/เดือน" accent="blue"
+            features={["ส่งได้ 1,000 ข้อความ/เดือน", "รายงานสรุปรายเดือน", "รองรับ Rich Message"]}
+          />
+          <PlanCard
+            id="plan-pro" checked={plan === "pro"} onChange={() => setPlan("pro")}
+            name="Pro" price="฿3,000" unit="/เดือน" accent="blue" badge="แนะนำ"
+            features={["ส่งข้อความไม่จำกัด", "รายงาน Advanced Analytics", "รองรับ Video Message", "Priority Support"]}
+          />
+        </div>
+      </div>
+
+      <button onClick={() => onProceed({ ...acc.payload, service: "broadcast", plan })}
+        disabled={!canSubmit}
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-green-100">
+        <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
+      </button>
+    </div>
+  );
+}
+
+// ===========================================================================
+// FORM 2 — PREMIUM ID
+// ===========================================================================
+function PremiumIdForm({ onProceed }) {
+  const acc = useAccountForm();
+  const [premiumId, setPremiumId] = useState("");
+
+  const canSubmit = acc.isValid && premiumId.trim() !== "";
+  const cleanId   = premiumId.startsWith("@") ? premiumId : premiumId ? `@${premiumId}` : "";
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Service header */}
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-yellow-50 flex items-center justify-center shrink-0">
+          <Crown className="w-6 h-6 text-yellow-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-800 text-lg leading-tight">PREMIUM ID</h2>
+          <p className="text-sm text-slate-400">เลือก Premium ID สำหรับ LINE OA ของคุณ</p>
+        </div>
+      </div>
+
+      {/* Account */}
+      <AccountSection acc={acc} />
+
+      {/* Premium ID input */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
+        <div>
+          <label htmlFor="premium-id-input" className="block text-sm font-semibold text-slate-700 mb-1">
+            Premium ID ที่ต้องการ <span className="text-red-400">*</span>
+          </label>
+          <p className="text-xs text-slate-400 mb-3">ระบบจะตรวจสอบความพร้อมใช้งานหลังจากส่งคำขอ</p>
+          <div className="flex items-center gap-0">
+            <span className="inline-flex items-center px-4 py-3 rounded-l-xl bg-slate-200 border border-r-0 border-slate-300 text-slate-500 font-bold text-sm select-none">
+              @
+            </span>
+            <input
+              id="premium-id-input" type="text"
+              value={premiumId.startsWith("@") ? premiumId.slice(1) : premiumId}
+              onChange={e => setPremiumId(e.target.value)}
+              placeholder="mybrand"
+              className="flex-1 rounded-r-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition"
+            />
+          </div>
         </div>
 
-        {/* ── Phase 1: Account type ── */}
-        <fieldset className="mb-6">
-          <legend className="text-sm font-semibold text-slate-700 mb-3">
-            Account type <span className="text-red-400">*</span>
-          </legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
-            <RadioCard
-              id="radio-existing"
-              name="accountType"
-              value="existing"
-              checked={accountType === "existing"}
-              onChange={() => handleAccountTypeChange("existing")}
-              label="ระบุ Basic ID เดิม"
-              sublabel="Use Existing Basic ID"
-            />
-            <RadioCard
-              id="radio-new"
-              name="accountType"
-              value="new"
-              checked={accountType === "new"}
-              onChange={() => handleAccountTypeChange("new")}
-              label="เปิดบัญชีใหม่"
-              sublabel="Open New Account"
-            />
-          </div>
-        </fieldset>
-
-        {/* ── Phase 2a: Existing Basic ID flow ── */}
-        <Reveal show={accountType === "existing"}>
-          <div className="space-y-5 max-w-2xl">
-
-            {/* 1. Display Name */}
+        {/* Preview */}
+        {cleanId && (
+          <div className="flex items-center gap-3 bg-white rounded-xl border border-yellow-200 px-4 py-3">
+            <Crown size={16} className="text-yellow-500 shrink-0" />
             <div>
-              <label htmlFor="existing-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
-                ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="existing-display-name"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="เช่น Jayna's Boutique"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
-              />
-            </div>
-
-            {/* 2. Basic ID */}
-            <div>
-              <label htmlFor="basic-id" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-2">
-                Basic ID
-                <Tooltip text="ค้นหา Basic ID ของคุณใน LINE app → โปรไฟล์ → Basic ID โดยจะขึ้นต้นด้วย @">
-                  <Info size={14} />
-                </Tooltip>
-                <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="basic-id"
-                type="text"
-                value={basicId}
-                onChange={(e) => setBasicId(e.target.value)}
-                placeholder="@your-id"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
-              />
-            </div>
-
-            {/* 3. Payment channel */}
-            <fieldset>
-              <legend className="text-sm font-semibold text-slate-700 mb-1">
-                ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
-              </legend>
-              <p className="text-xs text-slate-400 mb-3">
-                Previous Payment Channel
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <RadioCard
-                  id="pay-line"
-                  name="paymentChannel"
-                  value="line_thailand"
-                  checked={paymentChannel === "line_thailand"}
-                  onChange={() => handlePaymentChannelChange("line_thailand")}
-                  label="ชำระผ่าน LINE Thailand"
-                  sublabel="ชำระโดยตรงกับ LINE Thailand"
-                />
-                <RadioCard
-                  id="pay-agency"
-                  name="paymentChannel"
-                  value="other_agency"
-                  checked={paymentChannel === "other_agency"}
-                  onChange={() => handlePaymentChannelChange("other_agency")}
-                  label="ชำระผ่าน Agency เจ้าอื่น"
-                  sublabel="ชำระผ่านตัวแทนขายรายอื่น"
-                />
-              </div>
-
-              {/* Agency name — revealed when "other_agency" selected */}
-              <Reveal show={paymentChannel === "other_agency"}>
-                <div className="mt-4">
-                  <label htmlFor="agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-                    <Building2 size={14} className="text-slate-400" />
-                    ชื่อ Agency <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    id="agency-name"
-                    type="text"
-                    value={agencyName}
-                    onChange={(e) => setAgencyName(e.target.value)}
-                    placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
-                  />
-                </div>
-              </Reveal>
-            </fieldset>
-
-            {/* Proceed button */}
-            <div className="pt-1">
-              <button
-                onClick={handleProceed}
-                disabled={!existingValid}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
-              >
-                <ArrowRight size={16} />
-                ดำเนินการต่อ →
-              </button>
+              <p className="text-xs text-slate-400">ตัวอย่าง ID ที่ต้องการ</p>
+              <p className="font-bold text-slate-800 text-sm">{cleanId}</p>
             </div>
           </div>
-        </Reveal>
+        )}
 
-        {/* ── Phase 2b: New account flow ── */}
-        <Reveal show={accountType === "new"}>
-          <div className="space-y-4 max-w-2xl">
-            <div>
-              <label htmlFor="new-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
-                Display Name (ชื่อแสดงผล) <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="new-display-name"
-                type="text"
-                value={newDisplayName}
-                onChange={(e) => setNewDisplayName(e.target.value)}
-                placeholder="e.g. Jayna's Boutique"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
-              />
-              <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                แอดมินจะทำการสร้าง Basic ID ให้ท่านหลังจากทำรายการสั่งซื้อสำเร็จ
-                <br />
-                Our admin will create your Basic ID after the purchase is complete.
-              </p>
-            </div>
-            <button
-              onClick={handleProceed}
-              disabled={!canProceedNew}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
-            >
-              <ArrowRight size={16} />
-              ดำเนินการต่อ →
-            </button>
-          </div>
-        </Reveal>
-      </section>
-    </>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          ราคา <strong className="text-slate-600">฿3,000/ปี</strong> — ทีมงานจะยืนยันความพร้อมใช้งานของ ID ภายใน 1–2 วันทำการ
+        </p>
+      </div>
+
+      <button onClick={() => onProceed({ ...acc.payload, service: "premium", premiumId: cleanId })}
+        disabled={!canSubmit}
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-yellow-100">
+        <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
+      </button>
+    </div>
   );
+}
+
+// ===========================================================================
+// FORM 3 — OA CHAT PACKAGE
+// ===========================================================================
+const CHAT_PERIODS = [
+  { months: 3, price: 990,  perMonth: 330,  savings: null },
+  { months: 6, price: 1800, perMonth: 300,  savings: "ประหยัด 9%" },
+  { months: 9, price: 2500, perMonth: 278,  savings: "ประหยัด 16%" },
+];
+
+function OAChatForm({ onProceed }) {
+  const acc = useAccountForm();
+  const [period, setPeriod] = useState(null); // 3 | 6 | 9
+
+  const canSubmit  = acc.isValid && period !== null;
+  const selected   = CHAT_PERIODS.find(p => p.months === period);
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Service header */}
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+          <MessageSquare className="w-6 h-6 text-green-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-800 text-lg leading-tight">OA CHAT PACKAGE</h2>
+          <p className="text-sm text-slate-400">เลือกระยะเวลาที่เหมาะกับแผนของคุณ</p>
+        </div>
+      </div>
+
+      {/* Account */}
+      <AccountSection acc={acc} />
+
+      {/* Period selection */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-3">
+          ระยะเวลา <span className="text-red-400">*</span>
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {CHAT_PERIODS.map(({ months, price, perMonth, savings }) => {
+            const checked = period === months;
+            return (
+              <label key={months} htmlFor={`period-${months}`}
+                className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all select-none block text-center ${
+                  checked ? "border-green-500 bg-green-50 shadow-md" : "border-slate-200 bg-white hover:border-slate-300"
+                }`}>
+                <input id={`period-${months}`} type="radio" checked={checked} onChange={() => setPeriod(months)} className="sr-only" />
+                {savings && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs font-bold px-2 py-0.5 rounded-full bg-green-500 text-white whitespace-nowrap">
+                    {savings}
+                  </span>
+                )}
+                <p className={`font-bold text-xl mb-0.5 ${checked ? "text-green-700" : "text-slate-800"}`}>
+                  {months} <span className="text-sm font-normal">เดือน</span>
+                </p>
+                <p className={`font-extrabold text-lg ${checked ? "text-green-700" : "text-slate-700"}`}>
+                  ฿{price.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">฿{perMonth}/เดือน</p>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected summary */}
+      {selected && (
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-5 py-3">
+          <span className="text-sm text-slate-600">ยอดรวม ({selected.months} เดือน)</span>
+          <span className="font-extrabold text-green-700 text-lg">฿{selected.price.toLocaleString()}</span>
+        </div>
+      )}
+
+      <button onClick={() => onProceed({ ...acc.payload, service: "chat", period, price: selected?.price })}
+        disabled={!canSubmit}
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-green-100">
+        <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
+      </button>
+    </div>
+  );
+}
+
+// ===========================================================================
+// FORM 4 — MESSAGING API
+// ===========================================================================
+function MessagingApiForm({ onProceed }) {
+  const acc = useAccountForm();
+  const [plan, setPlan] = useState(""); // "starter" | "business"
+
+  const canSubmit = acc.isValid && plan !== "";
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Service header */}
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+          <Zap className="w-6 h-6 text-purple-500" />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-800 text-lg leading-tight">MESSAGING API</h2>
+          <p className="text-sm text-slate-400">เลือกแพ็กเกจ API สำหรับการเชื่อมต่อระบบของคุณ</p>
+        </div>
+      </div>
+
+      {/* Account */}
+      <AccountSection acc={acc} />
+
+      {/* Plan selection */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-3">
+          เลือกแพ็กเกจ <span className="text-red-400">*</span>
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <PlanCard
+            id="api-starter" checked={plan === "starter"} onChange={() => setPlan("starter")}
+            name="Starter" price="฿2,500" unit="/เดือน" accent="purple"
+            features={["50,000 API calls/เดือน", "Webhook support", "Basic dashboard", "Email support"]}
+          />
+          <PlanCard
+            id="api-business" checked={plan === "business"} onChange={() => setPlan("business")}
+            name="Business" price="฿5,000" unit="/เดือน" accent="purple" badge="แนะนำ"
+            features={["Unlimited API calls", "Webhook + Polling", "Advanced analytics", "Priority support 24/7"]}
+          />
+        </div>
+      </div>
+
+      <button onClick={() => onProceed({ ...acc.payload, service: "api", plan })}
+        disabled={!canSubmit}
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-purple-100">
+        <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
+      </button>
+    </div>
+  );
+}
+
+// ===========================================================================
+// Router (default export)
+// ===========================================================================
+export default function PurchaseValidationHeader({ service, onProceed }) {
+  switch (service?.id) {
+    case "broadcast": return <BroadcastForm     onProceed={onProceed} />;
+    case "premium":   return <PremiumIdForm      onProceed={onProceed} />;
+    case "chat":      return <OAChatForm         onProceed={onProceed} />;
+    case "api":       return <MessagingApiForm   onProceed={onProceed} />;
+    default:          return <BroadcastForm      onProceed={onProceed} />;
+  }
 }
