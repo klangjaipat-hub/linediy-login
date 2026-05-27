@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Info, Radio, Crown, MessageSquare, Zap,
-  CheckCircle2, Building2, ChevronRight,
+  CheckCircle2, Building2, ChevronRight, Loader2, AlertCircle,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -68,26 +68,51 @@ function Reveal({ show, children }) {
 // ---------------------------------------------------------------------------
 // useAccountForm — shared account state hook
 // ---------------------------------------------------------------------------
-function useAccountForm() {
-  const [accountType,     setAccountType]     = useState("new");
-  const [displayName,     setDisplayName]     = useState("");
-  const [basicId,         setBasicId]         = useState("");
-  const [paymentChannel,  setPaymentChannel]  = useState("");
-  const [agencyName,      setAgencyName]      = useState("");
+function useAccountForm(isLocked) {
+  const [accountType,    setAccountType]    = useState(isLocked ? "new" : "existing");
+  const [displayName,    setDisplayName]    = useState("");
+  const [basicId,        setBasicId]        = useState("");
+  const [idVerifyState,  setIdVerifyState]  = useState(null); // null | 'loading' | 'success' | 'error'
+  const [paymentChannel, setPaymentChannel] = useState("");
+  const [agencyName,     setAgencyName]     = useState("");
 
   const handleTypeChange = (val) => {
-    setAccountType(val); setDisplayName(""); setBasicId(""); setPaymentChannel(""); setAgencyName("");
-  };
-  const handleChannelChange = (val) => {
-    setPaymentChannel(val); if (val !== "other_agency") setAgencyName("");
+    setAccountType(val); setDisplayName(""); setBasicId("");
+    setIdVerifyState(null); setPaymentChannel(""); setAgencyName("");
   };
 
-  const isValid =
+  const handleBasicIdChange = (val) => {
+    setBasicId(val);
+    if (idVerifyState !== null) {
+      setIdVerifyState(null);
+      setPaymentChannel("");
+      setAgencyName("");
+    }
+  };
+
+  const handleVerifyId = async () => {
+    if (!basicId.trim()) return;
+    setIdVerifyState("loading");
+    await new Promise(r => setTimeout(r, 1200));
+    if (/^@[a-zA-Z0-9_.-]{1,}/.test(basicId.trim())) {
+      setIdVerifyState("success");
+    } else {
+      setIdVerifyState("error");
+    }
+  };
+
+  const handleChannelChange = (val) => {
+    setPaymentChannel(val);
+    if (val !== "other_agency") setAgencyName("");
+  };
+
+  const isValid = !isLocked || (
     displayName.trim() !== "" && (
       accountType === "new" ||
-      (basicId.trim() !== "" && paymentChannel !== "" &&
+      (idVerifyState === "success" && paymentChannel !== "" &&
         (paymentChannel !== "other_agency" || agencyName.trim() !== ""))
-    );
+    )
+  );
 
   const payload =
     accountType === "new"
@@ -97,9 +122,10 @@ function useAccountForm() {
   return {
     accountType, handleTypeChange,
     displayName, setDisplayName,
-    basicId,     setBasicId,
+    basicId, handleBasicIdChange,
+    idVerifyState, handleVerifyId,
     paymentChannel, handleChannelChange,
-    agencyName,  setAgencyName,
+    agencyName, setAgencyName,
     isValid, payload,
   };
 }
@@ -107,24 +133,33 @@ function useAccountForm() {
 // ---------------------------------------------------------------------------
 // AccountSection — shared account fields used across all forms
 // ---------------------------------------------------------------------------
-function AccountSection({ acc }) {
-  const { accountType, handleTypeChange, displayName, setDisplayName,
-          basicId, setBasicId, paymentChannel, handleChannelChange,
-          agencyName, setAgencyName } = acc;
+function AccountSection({ acc, isLocked }) {
+  if (!isLocked) return null;
+  const {
+    accountType, handleTypeChange,
+    displayName, setDisplayName,
+    basicId, handleBasicIdChange,
+    idVerifyState, handleVerifyId,
+    paymentChannel, handleChannelChange,
+    agencyName, setAgencyName,
+  } = acc;
+
   return (
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
       <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
 
       {/* Account type */}
-      <fieldset>
-        <legend className="text-sm font-semibold text-slate-700 mb-3">
-          ประเภทบัญชี <span className="text-red-400">*</span>
-        </legend>
-        <div className="grid grid-cols-2 gap-3">
-          <RadioCard id="acc-new"      name="accountType" value="new"      checked={accountType === "new"}      onChange={() => handleTypeChange("new")}      label="เปิดบัญชีใหม่"    sublabel="Open New Account"       />
-          <RadioCard id="acc-existing" name="accountType" value="existing" checked={accountType === "existing"} onChange={() => handleTypeChange("existing")} label="ระบุ Basic ID เดิม" sublabel="Use Existing Basic ID" />
-        </div>
-      </fieldset>
+      {isLocked && (
+        <fieldset>
+          <legend className="text-sm font-semibold text-slate-700 mb-3">
+            ประเภทบัญชี <span className="text-red-400">*</span>
+          </legend>
+          <div className="grid grid-cols-2 gap-3">
+            <RadioCard id="acc-new"      name="accountType" value="new"      checked={accountType === "new"}      onChange={() => handleTypeChange("new")}      label="เปิดบัญชีใหม่"     sublabel="Open New Account"       />
+            <RadioCard id="acc-existing" name="accountType" value="existing" checked={accountType === "existing"} onChange={() => handleTypeChange("existing")} label="ระบุ Basic ID เดิม" sublabel="Use Existing Basic ID" />
+          </div>
+        </fieldset>
+      )}
 
       {/* Display Name */}
       <div>
@@ -139,38 +174,93 @@ function AccountSection({ acc }) {
       {/* Existing-only fields */}
       <Reveal show={accountType === "existing"}>
         <div className="space-y-4 pt-1">
-          {/* Basic ID */}
+
+          {/* Basic ID + Verify button */}
           <div>
             <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-2">
               Basic ID
-              <Tooltip text="ค้นหา Basic ID ใน LINE app → โปรไฟล์ → Basic ID (ขึ้นต้นด้วย @)"><Info size={14} /></Tooltip>
+              <Tooltip text="Basic ID คือรหัส @username ของ LINE OA เช่น @myshop — ใช้สำหรับค้นหาและจดจำบัญชีของคุณ"><Info size={14} /></Tooltip>
               <span className="text-red-400">*</span>
             </label>
-            <input id="acc-basic-id" type="text" value={basicId} onChange={e => setBasicId(e.target.value)}
-              placeholder="@your-id"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
-          </div>
-          {/* Payment channel */}
-          <fieldset>
-            <legend className="text-sm font-semibold text-slate-700 mb-1">
-              ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
-            </legend>
-            <p className="text-xs text-slate-400 mb-3">Previous Payment Channel</p>
-            <div className="grid grid-cols-2 gap-3">
-              <RadioCard id="pay-line"   name="paymentChannel" value="line_thailand" checked={paymentChannel === "line_thailand"} onChange={() => handleChannelChange("line_thailand")} label="ชำระผ่าน LINE Thailand" sublabel="โดยตรงกับ LINE Thailand" />
-              <RadioCard id="pay-agency" name="paymentChannel" value="other_agency"  checked={paymentChannel === "other_agency"}  onChange={() => handleChannelChange("other_agency")}  label="ชำระผ่าน Agency เจ้าอื่น" sublabel="ผ่านตัวแทนขายรายอื่น" />
+            <div className="flex gap-2">
+              <input
+                id="acc-basic-id"
+                type="text"
+                value={basicId}
+                onChange={e => handleBasicIdChange(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleVerifyId()}
+                placeholder="@your-id"
+                disabled={idVerifyState === "success"}
+                className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
+                  idVerifyState === "success"
+                    ? "border-green-500 bg-green-50 focus:ring-green-100"
+                    : idVerifyState === "error"
+                    ? "border-red-400 focus:ring-red-100"
+                    : "border-slate-300 focus:border-green-500 focus:ring-green-200"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={handleVerifyId}
+                disabled={idVerifyState === "loading" || idVerifyState === "success" || !basicId.trim()}
+                className={`px-4 py-3 rounded-xl font-semibold text-sm transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  idVerifyState === "success"
+                    ? "bg-green-100 text-green-700 cursor-default"
+                    : "bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white"
+                }`}
+              >
+                {idVerifyState === "loading"
+                  ? <><Loader2 size={14} className="animate-spin" /> กำลังตรวจสอบ</>
+                  : idVerifyState === "success"
+                  ? <><CheckCircle2 size={14} /> ตรวจสอบแล้ว</>
+                  : "ตรวจสอบ"}
+              </button>
             </div>
-            <Reveal show={paymentChannel === "other_agency"}>
-              <div className="mt-3">
-                <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-                  <Building2 size={14} className="text-slate-400" /> ชื่อ Agency <span className="text-red-400">*</span>
-                </label>
-                <input id="acc-agency-name" type="text" value={agencyName} onChange={e => setAgencyName(e.target.value)}
-                  placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+
+            {/* Success inline feedback */}
+            {idVerifyState === "success" && (
+              <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+                <CheckCircle2 size={15} className="text-green-600 shrink-0" />
+                <p className="text-sm text-green-700 font-medium">✅ ตรวจพบข้อมูลบัญชี — กรุณาระบุช่องทางชำระเงินเดิม</p>
               </div>
-            </Reveal>
-          </fieldset>
+            )}
+
+            {/* Error inline feedback */}
+            {idVerifyState === "error" && (
+              <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+                <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm text-red-700 font-semibold">ไม่พบ Basic ID นี้ในระบบ</p>
+                  <p className="text-xs text-red-500 mt-0.5">กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อ Admin เพื่อขอความช่วยเหลือ</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment channel — only revealed after successful verification */}
+          <Reveal show={idVerifyState === "success"}>
+            <fieldset>
+              <legend className="text-sm font-semibold text-slate-700 mb-1">
+                ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
+              </legend>
+              <p className="text-xs text-slate-400 mb-3">Previous Payment Channel</p>
+              <div className="grid grid-cols-2 gap-3">
+                <RadioCard id="pay-line"   name="paymentChannel" value="line_thailand" checked={paymentChannel === "line_thailand"} onChange={() => handleChannelChange("line_thailand")} label="ชำระผ่าน LINE Thailand"   sublabel="โดยตรงกับ LINE Thailand"   />
+                <RadioCard id="pay-agency" name="paymentChannel" value="other_agency"  checked={paymentChannel === "other_agency"}  onChange={() => handleChannelChange("other_agency")}  label="ชำระผ่าน Agency เจ้าอื่น" sublabel="ผ่านตัวแทนขายรายอื่น" />
+              </div>
+              <Reveal show={paymentChannel === "other_agency"}>
+                <div className="mt-3">
+                  <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                    <Building2 size={14} className="text-slate-400" /> ชื่อ Agency <span className="text-red-400">*</span>
+                  </label>
+                  <input id="acc-agency-name" type="text" value={agencyName} onChange={e => setAgencyName(e.target.value)}
+                    placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+                </div>
+              </Reveal>
+            </fieldset>
+          </Reveal>
+
         </div>
       </Reveal>
     </div>
@@ -210,8 +300,8 @@ function PlanCard({ id, name, checked, onChange, price, unit, features, accent, 
 // ===========================================================================
 // FORM 1 — BROADCAST PACKAGE
 // ===========================================================================
-function BroadcastForm({ onProceed }) {
-  const acc = useAccountForm();
+function BroadcastForm({ onProceed, isLocked }) {
+  const acc = useAccountForm(isLocked);
   const [plan, setPlan] = useState(""); // "basic" | "pro"
 
   const canSubmit = acc.isValid && plan !== "";
@@ -230,7 +320,7 @@ function BroadcastForm({ onProceed }) {
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} />
+      <AccountSection acc={acc} isLocked={isLocked} />
 
       {/* Plan selection */}
       <div>
@@ -263,8 +353,8 @@ function BroadcastForm({ onProceed }) {
 // ===========================================================================
 // FORM 2 — PREMIUM ID
 // ===========================================================================
-function PremiumIdForm({ onProceed }) {
-  const acc = useAccountForm();
+function PremiumIdForm({ onProceed, isLocked }) {
+  const acc = useAccountForm(isLocked);
   const [premiumId, setPremiumId] = useState("");
 
   const canSubmit = acc.isValid && premiumId.trim() !== "";
@@ -284,7 +374,7 @@ function PremiumIdForm({ onProceed }) {
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} />
+      <AccountSection acc={acc} isLocked={isLocked} />
 
       {/* Premium ID input */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
@@ -341,8 +431,8 @@ const CHAT_PERIODS = [
   { months: 9, price: 2500, perMonth: 278,  savings: "ประหยัด 16%" },
 ];
 
-function OAChatForm({ onProceed }) {
-  const acc = useAccountForm();
+function OAChatForm({ onProceed, isLocked }) {
+  const acc = useAccountForm(isLocked);
   const [period, setPeriod] = useState(null); // 3 | 6 | 9
 
   const canSubmit  = acc.isValid && period !== null;
@@ -362,7 +452,7 @@ function OAChatForm({ onProceed }) {
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} />
+      <AccountSection acc={acc} isLocked={isLocked} />
 
       {/* Period selection */}
       <div>
@@ -416,8 +506,8 @@ function OAChatForm({ onProceed }) {
 // ===========================================================================
 // FORM 4 — MESSAGING API
 // ===========================================================================
-function MessagingApiForm({ onProceed }) {
-  const acc = useAccountForm();
+function MessagingApiForm({ onProceed, isLocked }) {
+  const acc = useAccountForm(isLocked);
   const [plan, setPlan] = useState(""); // "starter" | "business"
 
   const canSubmit = acc.isValid && plan !== "";
@@ -436,7 +526,7 @@ function MessagingApiForm({ onProceed }) {
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} />
+      <AccountSection acc={acc} isLocked={isLocked} />
 
       {/* Plan selection */}
       <div>
@@ -469,12 +559,12 @@ function MessagingApiForm({ onProceed }) {
 // ===========================================================================
 // Router (default export)
 // ===========================================================================
-export default function PurchaseValidationHeader({ service, onProceed }) {
+export default function PurchaseValidationHeader({ service, isLocked, onProceed }) {
   switch (service?.id) {
-    case "broadcast": return <BroadcastForm     onProceed={onProceed} />;
-    case "premium":   return <PremiumIdForm      onProceed={onProceed} />;
-    case "chat":      return <OAChatForm         onProceed={onProceed} />;
-    case "api":       return <MessagingApiForm   onProceed={onProceed} />;
-    default:          return <BroadcastForm      onProceed={onProceed} />;
+    case "broadcast": return <BroadcastForm     onProceed={onProceed} isLocked={isLocked} />;
+    case "premium":   return <PremiumIdForm      onProceed={onProceed} isLocked={isLocked} />;
+    case "chat":      return <OAChatForm         onProceed={onProceed} isLocked={isLocked} />;
+    case "api":       return <MessagingApiForm   onProceed={onProceed} isLocked={isLocked} />;
+    default:          return <BroadcastForm      onProceed={onProceed} isLocked={isLocked} />;
   }
 }

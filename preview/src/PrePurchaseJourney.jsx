@@ -4,7 +4,7 @@ import {
   Zap, Home, ShoppingCart, ClipboardList, CreditCard, Gift, FileText,
   BookOpen, LogOut, Lock, Check, ArrowLeft, Link2, Loader2, X,
   CheckCircle2, Unlock, Sparkles, UserCog, UserCheck, UserPlus,
-  Settings, ChevronLeft, LogIn,
+  Settings, ChevronLeft, LogIn, Info,
 } from 'lucide-react'
 import PurchaseValidationHeader from './PurchaseValidationHeader'
 
@@ -51,16 +51,48 @@ const SIDEBAR_ITEMS = [
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
-function Toast({ message, onDone }) {
+function Toast({ message, type = 'success', onDone }) {
   useEffect(() => {
     const t = setTimeout(onDone, 3200)
     return () => clearTimeout(t)
   }, [onDone])
+  if (type === 'locked') {
+    return (
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-amber-800 text-white text-sm px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 max-w-sm text-center">
+        <Lock className="w-4 h-4 text-amber-300 shrink-0" />
+        {message}
+      </div>
+    )
+  }
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-5 py-3 rounded-xl shadow-xl flex items-center gap-2">
       <Check className="w-4 h-4 text-green-400 shrink-0" />
       {message}
     </div>
+  )
+}
+
+// ─── Tooltip (Basic ID jargon helper) ────────────────────────────────────────
+
+function BasicIdTooltip() {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-flex items-center ml-1">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+        className="text-slate-400 hover:text-slate-600 transition-colors align-middle" aria-label="Basic ID คืออะไร?"
+      >
+        <Info size={13} />
+      </button>
+      {open && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 text-white text-xs p-3 leading-relaxed shadow-lg z-20 pointer-events-none">
+          Basic ID คือรหัส @username ของ LINE OA เช่น @myshop — ใช้สำหรับค้นหาและจดจำบัญชีของคุณ
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -92,7 +124,9 @@ function LinkAccountModal({ onClose, onUnlock }) {
             {phase === 'success' ? <CheckCircle2 size={28} className="text-green-600" /> : <Link2 size={26} className="text-[#06C755]" />}
           </span>
         </div>
-        <h2 className="text-xl font-bold text-center text-slate-800 mb-1">{phase === 'success' ? '🎉 เชื่อมต่อสำเร็จ!' : 'เชื่อมต่อ Basic ID'}</h2>
+        <h2 className="text-xl font-bold text-center text-slate-800 mb-1 flex items-center justify-center gap-1">
+          {phase === 'success' ? '🎉 เชื่อมต่อสำเร็จ!' : <><span>เชื่อมต่อ Basic ID</span><BasicIdTooltip /></>}
+        </h2>
         <p className="text-sm text-center text-slate-500 mb-6">
           {phase === 'success' ? `เชื่อมต่อ Basic ID: ${basicId} สำเร็จ!` : 'ระบุ Basic ID เพื่อปลดล็อคฟีเจอร์ทั้งหมดและเข้าสู่ Full Mode'}
         </p>
@@ -267,13 +301,13 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                   <div className="w-11 h-11 rounded-xl bg-green-50 group-hover:bg-green-100 flex items-center justify-center mb-4 transition-colors">
                     <UserCheck size={22} className="text-[#06C755]" />
                   </div>
-                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">ลูกค้าปัจจุบัน</p>
+                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">บัญชีเดิม</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
                     สำหรับบัญชีที่เคยซื้อแพ็กเกจกับ Sellsuki แล้ว
                   </p>
                 </button>
 
-                {/* Card 2 — ลูกค้าใหม่ */}
+                {/* Card 2 — เปิดบัญชีใหม่/ย้ายบัญชี */}
                 <button
                   onClick={() => goto('LOADING')}
                   className="group text-left bg-white border-2 border-slate-200 hover:border-blue-400 rounded-2xl p-5 transition-all hover:shadow-md cursor-pointer"
@@ -281,9 +315,9 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                   <div className="w-11 h-11 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-4 transition-colors">
                     <UserPlus size={22} className="text-blue-500" />
                   </div>
-                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">ลูกค้าใหม่</p>
+                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">เปิดบัญชีใหม่/ย้ายบัญชี</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    เปิดบัญชีใหม่ / ย้ายบัญชีเข้า Sellsuki
+                    สำหรับผู้ที่ต้องการเปิดบัญชีหรือย้ายเข้า Sellsuki
                   </p>
                 </button>
               </div>
@@ -303,35 +337,40 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                 <span className="text-xs font-semibold text-green-700">ลูกค้าปัจจุบัน</span>
               </div>
 
-              <h2 className="text-xl font-bold text-slate-800 mb-1">ตรวจสอบ Basic ID</h2>
+              <h2 className="text-xl font-bold text-slate-800 mb-1 flex items-center gap-1">ตรวจสอบ Basic ID <BasicIdTooltip /></h2>
               <p className="text-sm text-slate-500 mb-7">กรอก Basic ID เพื่อยืนยันบัญชีและเชื่อมต่อ</p>
 
               <div className="space-y-3">
-                <div className="flex gap-3">
-                  <input
-                    autoFocus
-                    type="text"
-                    value={basicId}
-                    onChange={e => { setBasicId(e.target.value); if (verify) setVerify(null) }}
-                    onKeyDown={e => e.key === 'Enter' && handleVerify()}
-                    placeholder="@your-id"
-                    disabled={verify === 'success'}
-                    className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
-                      verify === 'success'
-                        ? 'border-green-500 bg-green-50 focus:ring-green-100'
-                        : 'border-slate-300 focus:border-green-500 focus:ring-green-200'
-                    }`}
-                  />
-                  <button
-                    onClick={handleVerify}
-                    disabled={verify === 'loading' || verify === 'success' || !basicId.trim()}
-                    className="px-5 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
-                  >
-                    {verify === 'loading'
-                      ? <Loader2 size={16} className="animate-spin" />
-                      : 'ตรวจสอบ'
-                    }
-                  </button>
+                <div>
+                  <label className="flex items-center gap-1 text-sm font-semibold text-slate-700 mb-2">
+                    Basic ID <BasicIdTooltip /> <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={basicId}
+                      onChange={e => { setBasicId(e.target.value); if (verify) setVerify(null) }}
+                      onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                      placeholder="@your-id"
+                      disabled={verify === 'success'}
+                      className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
+                        verify === 'success'
+                          ? 'border-green-500 bg-green-50 focus:ring-green-100'
+                          : 'border-slate-300 focus:border-green-500 focus:ring-green-200'
+                      }`}
+                    />
+                    <button
+                      onClick={handleVerify}
+                      disabled={verify === 'loading' || verify === 'success' || !basicId.trim()}
+                      className="px-5 py-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-sm transition-colors whitespace-nowrap"
+                    >
+                      {verify === 'loading'
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : 'ตรวจสอบ'
+                      }
+                    </button>
+                  </div>
                 </div>
 
                 {/* Success state */}
@@ -606,14 +645,16 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [purchaseStep,    setPurchaseStep]    = useState(1)   // 1 | 2 | 'success'
   const [orderPayload,    setOrderPayload]    = useState(null)
   const [selectedService, setSelectedService] = useState(null)
+  const [cameFromPicker,  setCameFromPicker]  = useState(false)
 
   const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
   const handlePurchase = (service) => {
     setSelectedService(service)
+    setCameFromPicker(false)
     setPurchaseStep(1)
     setOrderPayload(null)
-    setToast('กำลังไปยังหน้าสั่งซื้อ…')
+    setToast({ message: 'กำลังไปยังหน้าสั่งซื้อ…', type: 'success' })
     setTimeout(() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }, 900)
   }
 
@@ -624,7 +665,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setLocked(false)
     setShowLinkModal(false)
     setJustUnlocked(true)
-    setToast(`✅ ปลดล็อค Full Mode สำเร็จ! บัญชี: ${linkedId}`)
+    setToast({ message: `✅ ปลดล็อค Full Mode สำเร็จ! บัญชี: ${linkedId}`, type: 'success' })
     setTimeout(() => setJustUnlocked(false), 2500)
   }
 
@@ -643,13 +684,17 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   }
 
   const handleRedirectToPurchase = () => {
+    setSelectedService(null)
+    setCameFromPicker(false)
+    setPurchaseStep(1)
+    setOrderPayload(null)
     setShowPurchase(true)
     setActiveMenu('ซื้อบริการ')
   }
 
   return (
     <div className="min-h-screen bg-slate-100 flex">
-      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
       {showLinkModal && <LinkAccountModal onClose={() => setShowLinkModal(false)} onUnlock={handleUnlock} />}
 
       {/* ── Sidebar ── */}
@@ -684,7 +729,13 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             const isItemLocked = locked && itemLocked
             const isJustOpened = justUnlocked && itemLocked
             return (
-              <button key={label} onClick={() => !isItemLocked && handleNavClick(label)}
+              <button key={label} onClick={() => {
+                if (isItemLocked) {
+                  setToast({ message: `เชื่อมต่อ Basic ID เพื่อเข้าใช้งาน "${label}"`, type: 'locked' })
+                } else {
+                  handleNavClick(label)
+                }
+              }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-500 ${
                   isJustOpened   ? 'bg-green-50 text-green-700 ring-1 ring-green-200' :
                   isItemLocked   ? 'opacity-40 cursor-not-allowed text-gray-400' :
@@ -748,25 +799,64 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                 {/* Back button — hidden on success screen */}
                 {purchaseStep !== 'success' && (
                   <button
-                    onClick={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }}
+                    onClick={() => {
+                      if (selectedService && cameFromPicker) { setSelectedService(null); setCameFromPicker(false) }
+                      else { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }
+                    }}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-5 transition-colors">
-                    <ArrowLeft className="w-4 h-4" /> กลับหน้า Dashboard
+                    <ArrowLeft className="w-4 h-4" />
+                    {selectedService && cameFromPicker ? 'เปลี่ยนบริการ' : 'กลับหน้า Dashboard'}
                   </button>
                 )}
 
+                {/* Service picker — shown when no service has been chosen yet */}
+                {purchaseStep === 1 && !selectedService && (
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 mb-1">เลือกบริการที่ต้องการสั่งซื้อ</h2>
+                    <p className="text-sm text-gray-400 mb-6">Select a service to continue</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {SERVICES.map(({ id, title, icon: Icon, desc, color, bg, price, unit }) => (
+                        <button
+                          key={id}
+                          onClick={() => { setSelectedService({ id, title, icon: Icon, desc, color, bg, price, unit }); setCameFromPicker(true) }}
+                          className="group text-left bg-white border-2 border-slate-200 hover:border-[#06C755] rounded-2xl p-5 transition-all hover:shadow-md cursor-pointer flex items-center gap-4"
+                        >
+                          <div className={`w-14 h-14 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                            <Icon className={`w-7 h-7 ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-slate-800 text-sm leading-tight">{title}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{desc}</p>
+                            <p className="text-xs font-semibold text-slate-700 mt-1.5">
+                              เริ่มต้น {price}<span className="font-normal text-slate-400">{unit}</span>
+                            </p>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#06C755] transition-colors shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Service form */}
-                {purchaseStep === 1 && (
-                  <PurchaseValidationHeader
-                    service={selectedService}
-                    onProceed={(p) => { setOrderPayload(p); setPurchaseStep('success') }}
-                  />
+                {purchaseStep === 1 && selectedService && (
+                  <>
+                    <h2 className="text-xl font-bold text-gray-800 mb-5">
+                      ซื้อบริการ — {selectedService.title}
+                    </h2>
+                    <PurchaseValidationHeader
+                      service={selectedService}
+                      isLocked={locked}
+                      onProceed={(p) => { setOrderPayload(p); setPurchaseStep('success') }}
+                    />
+                  </>
                 )}
 
                 {/* Success */}
                 {purchaseStep === 'success' && (
                   <PurchaseSuccessScreen
                     service={selectedService}
-                    onBackToDashboard={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1) }}
+                    onBackToDashboard={() => { setShowPurchase(false); setActiveMenu('หน้าหลัก'); setPurchaseStep(1); setSelectedService(null) }}
                   />
                 )}
               </div>
@@ -793,7 +883,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                     </div>
                     <button onClick={handleGoManageNewUser}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100 whitespace-nowrap shrink-0">
-                      <Plus className="w-4 h-4" /> เพิ่ม/เชื่อมต่อ Basic ID เดิม
+                      <Plus className="w-4 h-4" /> เพิ่ม/เชื่อมต่อ Basic ID
                     </button>
                   </div>
                 )}
@@ -811,7 +901,10 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
 
                 {/* Packages */}
                 <section className="mb-8">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">สถานะแพ็กเกจปัจจุบัน</h2>
+                  <div className="mb-3">
+                    <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">แพ็กเกจที่คุณใช้งานอยู่</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">บริการที่เปิดใช้งานภายใต้บัญชีของคุณ</p>
+                  </div>
                   <div className="space-y-3">
                     {PACKAGES.map(({ name, status, icon: Icon }) => (
                       <div key={name} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
