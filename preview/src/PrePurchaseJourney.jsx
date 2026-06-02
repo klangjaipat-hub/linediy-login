@@ -645,11 +645,17 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [purchaseStep,    setPurchaseStep]    = useState(1)   // 1 | 2 | 'success'
   const [orderPayload,    setOrderPayload]    = useState(null)
   const [selectedService, setSelectedService] = useState(null)
-  const [cameFromPicker,  setCameFromPicker]  = useState(false)
+  const [cameFromPicker,      setCameFromPicker]      = useState(false)
+  const [blockedServiceModal, setBlockedServiceModal] = useState(false)
+  const [requiresAccountType, setRequiresAccountType] = useState(false) // full-mode user adding new OA
 
   const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
   const handlePurchase = (service) => {
+    if (locked && service.id === 'api') {
+      setBlockedServiceModal(true)
+      return
+    }
     setSelectedService(service)
     setCameFromPicker(false)
     setPurchaseStep(1)
@@ -675,6 +681,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setManageEntryStep(null)
     setPurchaseStep(1)
     setOrderPayload(null)
+    setRequiresAccountType(false)
   }
 
   const handleGoManageNewUser = () => {
@@ -688,6 +695,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setCameFromPicker(false)
     setPurchaseStep(1)
     setOrderPayload(null)
+    setRequiresAccountType(true)
     setShowPurchase(true)
     setActiveMenu('ซื้อบริการ')
   }
@@ -696,6 +704,42 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     <div className="min-h-screen bg-slate-100 flex">
       {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
       {showLinkModal && <LinkAccountModal onClose={() => setShowLinkModal(false)} onUnlock={handleUnlock} />}
+
+      {/* Blocked service modal — Messaging API requires Broadcast first */}
+      {blockedServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setBlockedServiceModal(false)} />
+          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7 text-center">
+            <button onClick={() => setBlockedServiceModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+            <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6 text-orange-500" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">ต้องซื้อ Broadcast ก่อน</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-5">
+              Messaging API จำเป็นต้องใช้งานร่วมกับ Broadcast Package<br />
+              กรุณาซื้อ <span className="font-semibold text-slate-700">Broadcast Package</span> ก่อนเพื่อเปิดใช้งานบริการนี้
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBlockedServiceModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={() => {
+                  setBlockedServiceModal(false)
+                  const broadcast = SERVICES.find(s => s.id === 'broadcast')
+                  handlePurchase(broadcast)
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
+              >
+                ซื้อ Broadcast
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Sidebar ── */}
       <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-sm">
@@ -846,7 +890,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                     </h2>
                     <PurchaseValidationHeader
                       service={selectedService}
-                      isLocked={locked}
+                      isLocked={locked || requiresAccountType}
                       onProceed={(p) => { setOrderPayload(p); setPurchaseStep('success') }}
                     />
                   </>
