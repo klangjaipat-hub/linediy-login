@@ -1,8 +1,33 @@
 import { useState, useEffect } from "react";
 import {
   Info, Radio, Crown, MessageSquare, Zap,
-  CheckCircle2, Building2, ChevronRight, Loader2, AlertCircle,
+  CheckCircle2, Building2, ChevronRight, Loader2, Ban, Copy,
 } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Mock verification lookup — use these handles in demos
+// ---------------------------------------------------------------------------
+const VERIFY_MOCK = {
+  // ✅ Happy cases
+  '@happyshop':  'success',
+  '@demo':       'success',
+  '@mycoolshop': 'success',
+  '@sellsukishop': 'success',
+  '@333aaaa':    'success',
+  '@mybrand-th': 'success',
+  // 🚫 Banned / suspended
+  '@banned':     'banned',
+  '@suspended':  'banned',
+  // 🔁 Already registered with Sellsuki
+  '@duplicate':  'duplicate',
+  '@existing':   'duplicate',
+}
+
+const DEMO_CHIPS = [
+  { id: '@happyshop', label: 'สำเร็จ',      color: 'bg-green-100 text-green-700 hover:bg-green-200'   },
+  { id: '@banned',    label: 'ถูกแบน',      color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
+  { id: '@duplicate', label: 'มีในระบบแล้ว',color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
+]
 
 // ---------------------------------------------------------------------------
 // Tooltip
@@ -94,11 +119,9 @@ function useAccountForm(isLocked) {
     if (!basicId.trim()) return;
     setIdVerifyState("loading");
     await new Promise(r => setTimeout(r, 1200));
-    if (/^@[a-zA-Z0-9_.-]{1,}/.test(basicId.trim())) {
-      setIdVerifyState("success");
-    } else {
-      setIdVerifyState("error");
-    }
+    const id = basicId.trim().toLowerCase();
+    const result = VERIFY_MOCK[id] ?? "success";
+    setIdVerifyState(result);
   };
 
   const handleChannelChange = (val) => {
@@ -119,15 +142,84 @@ function useAccountForm(isLocked) {
       ? { type: "new", displayName }
       : { type: "existing", displayName, basicId, paymentChannel, agencyName: paymentChannel === "other_agency" ? agencyName : "" };
 
+  const resetVerify = () => {
+    setIdVerifyState(null);
+    setPaymentChannel("");
+    setAgencyName("");
+  };
+
   return {
     accountType, handleTypeChange,
     displayName, setDisplayName,
     basicId, handleBasicIdChange,
-    idVerifyState, handleVerifyId,
+    idVerifyState, handleVerifyId, resetVerify,
     paymentChannel, handleChannelChange,
     agencyName, setAgencyName,
     isValid, payload,
   };
+}
+
+// ---------------------------------------------------------------------------
+// VerifyModal — blocking popup for all Basic ID verification outcomes
+// ---------------------------------------------------------------------------
+const VERIFY_MODAL_CONFIG = {
+  success: {
+    iconBg: 'bg-green-100',
+    icon: (size) => <CheckCircle2 size={size} className="text-green-600" />,
+    title: 'ตรวจพบข้อมูลบัญชี',
+    body: (id) => `พบ Basic ID ${id} ในระบบแล้ว\nกรุณาระบุช่องทางชำระเงินเดิมเพื่อดำเนินการต่อ`,
+    primaryLabel: 'ดำเนินการต่อ',
+    primaryClass: 'bg-[#06C755] hover:bg-[#05b34c] text-white shadow-md shadow-green-100',
+    showContact: false,
+  },
+  banned: {
+    iconBg: 'bg-orange-100',
+    icon: (size) => <Ban size={size} className="text-orange-500" />,
+    title: 'บัญชีนี้ถูกระงับการใช้งาน',
+    body: () => 'ติดต่อทีมงานเพื่อตรวจสอบสถานะบัญชีและขอคืนสิทธิ์การใช้งาน',
+    primaryLabel: 'ปิด',
+    primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+    showContact: true,
+  },
+  duplicate: {
+    iconBg: 'bg-purple-100',
+    icon: (size) => <Copy size={size} className="text-purple-500" />,
+    title: 'Basic ID นี้มีในระบบ Sellsuki แล้ว',
+    body: () => 'หากคุณเป็นเจ้าของบัญชีนี้ ติดต่อ Admin เพื่อเข้าถึงบัญชีของคุณ',
+    primaryLabel: 'ลองอีกครั้ง',
+    primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+    showContact: true,
+  },
+}
+
+function VerifyModal({ state, basicId, onContinue, onRetry }) {
+  const cfg = VERIFY_MODAL_CONFIG[state]
+  if (!cfg) return null
+  const isPrimary = state === 'success' ? onContinue : onRetry
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7 text-center">
+        <div className={`w-14 h-14 rounded-full ${cfg.iconBg} flex items-center justify-center mx-auto mb-4`}>
+          {cfg.icon(28)}
+        </div>
+        <h2 className="text-lg font-bold text-slate-800 mb-2">{cfg.title}</h2>
+        <p className="text-sm text-slate-500 leading-relaxed mb-6 whitespace-pre-line">{cfg.body(basicId)}</p>
+        <div className="flex gap-3">
+          {cfg.showContact && (
+            <a href="https://lin.ee/sellsuki-support" target="_blank" rel="noopener noreferrer"
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
+              <MessageSquare size={14} /> ติดต่อ Admin
+            </a>
+          )}
+          <button onClick={isPrimary}
+            className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors ${cfg.primaryClass}`}>
+            {cfg.primaryLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -139,12 +231,26 @@ function AccountSection({ acc, isLocked }) {
     accountType, handleTypeChange,
     displayName, setDisplayName,
     basicId, handleBasicIdChange,
-    idVerifyState, handleVerifyId,
+    idVerifyState, handleVerifyId, resetVerify,
     paymentChannel, handleChannelChange,
     agencyName, setAgencyName,
   } = acc;
 
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  useEffect(() => {
+    if (idVerifyState && idVerifyState !== "loading") setVerifyModalOpen(true);
+  }, [idVerifyState]);
+
   return (
+    <>
+    {verifyModalOpen && (
+      <VerifyModal
+        state={idVerifyState}
+        basicId={basicId}
+        onContinue={() => setVerifyModalOpen(false)}
+        onRetry={() => { resetVerify(); setVerifyModalOpen(false); }}
+      />
+    )}
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
       <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
 
@@ -182,6 +288,17 @@ function AccountSection({ acc, isLocked }) {
               <Tooltip text="Basic ID คือรหัส @username ของ LINE OA เช่น @myshop — ใช้สำหรับค้นหาและจดจำบัญชีของคุณ"><Info size={14} /></Tooltip>
               <span className="text-red-400">*</span>
             </label>
+
+            {/* Demo chips */}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {DEMO_CHIPS.map(({ id, label, color }) => (
+                <button key={id} type="button" onClick={() => handleBasicIdChange(id)}
+                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${color}`}>
+                  {id} · {label}
+                </button>
+              ))}
+            </div>
+
             <div className="flex gap-2">
               <input
                 id="acc-basic-id"
@@ -194,7 +311,7 @@ function AccountSection({ acc, isLocked }) {
                 className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
                   idVerifyState === "success"
                     ? "border-green-500 bg-green-50 focus:ring-green-100"
-                    : idVerifyState === "error"
+                    : ["not_found","banned","duplicate"].includes(idVerifyState)
                     ? "border-red-400 focus:ring-red-100"
                     : "border-slate-300 focus:border-green-500 focus:ring-green-200"
                 }`}
@@ -213,38 +330,12 @@ function AccountSection({ acc, isLocked }) {
                   ? <><Loader2 size={14} className="animate-spin" /> กำลังตรวจสอบ</>
                   : idVerifyState === "success"
                   ? <><CheckCircle2 size={14} /> ตรวจสอบแล้ว</>
+                  : ["not_found","banned","duplicate"].includes(idVerifyState)
+                  ? "ลองอีกครั้ง"
                   : "ตรวจสอบ"}
               </button>
             </div>
 
-            {/* Success inline feedback */}
-            {idVerifyState === "success" && (
-              <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                <CheckCircle2 size={15} className="text-green-600 shrink-0" />
-                <p className="text-sm text-green-700 font-medium">✅ ตรวจพบข้อมูลบัญชี — กรุณาระบุช่องทางชำระเงินเดิม</p>
-              </div>
-            )}
-
-            {/* Error inline feedback */}
-            {idVerifyState === "error" && (
-              <div className="mt-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 space-y-2.5">
-                <div className="flex items-start gap-2">
-                  <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm text-red-700 font-semibold">ไม่พบ Basic ID นี้ในระบบ</p>
-                    <p className="text-xs text-red-500 mt-0.5">กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อทีมงานเพื่อขอความช่วยเหลือ</p>
-                  </div>
-                </div>
-                <a
-                  href="https://lin.ee/sellsuki-support"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-colors"
-                >
-                  <MessageSquare size={13} /> ติดต่อ Admin
-                </a>
-              </div>
-            )}
           </div>
 
           {/* Payment channel — only revealed after successful verification */}
@@ -274,6 +365,7 @@ function AccountSection({ acc, isLocked }) {
         </div>
       </Reveal>
     </div>
+    </>
   );
 }
 

@@ -50,6 +50,30 @@ const SIDEBAR_ITEMS = [
   { icon: FileText,      label: 'เอกสาร',           locked: false },
 ]
 
+// ─── Mock verification (shared across ManageBasicId + purchase forms) ─────────
+
+const VERIFY_MOCK = {
+  '@happyshop':    'success',
+  '@demo':         'success',
+  '@mycoolshop':   'success',
+  '@sellsukishop': 'success',
+  '@333aaaa':      'success',
+  '@mybrand-th':   'success',
+  '@notfound':     'not_found',
+  '@unknown':      'not_found',
+  '@banned':       'banned',
+  '@suspended':    'banned',
+  '@duplicate':    'duplicate',
+  '@existing':     'duplicate',
+}
+
+const MANAGE_DEMO_CHIPS = [
+  { id: '@happyshop', label: 'สำเร็จ',      color: 'bg-green-100 text-green-700 hover:bg-green-200'    },
+  { id: '@notfound',  label: 'ไม่พบ',       color: 'bg-red-100 text-red-700 hover:bg-red-200'          },
+  { id: '@banned',    label: 'ถูกแบน',      color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
+  { id: '@duplicate', label: 'มีแล้ว',      color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
+]
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
 function Toast({ message, type = 'success', onAction, onDone }) {
@@ -169,12 +193,13 @@ function LinkAccountModal({ onClose, onUnlock }) {
 // New users skip ACCOUNT_LIST and start at TYPE_SELECTION.
 
 function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRedirectToPurchase }) {
-  const [step,       setStep]       = useState(initialStep ?? (hasIds ? 'ACCOUNT_LIST' : 'TYPE_SELECTION'))
-  const [selectedId, setSelectedId] = useState(hasIds ? MOCK_CONNECTED_IDS[0].id : null)
-  const [basicId,    setBasicId]    = useState('')
-  const [verify,     setVerify]     = useState(null) // null | 'loading' | 'success'
-  const [fading,     setFading]     = useState(false)
-  const [stepKey,    setStepKey]    = useState(0)
+  const [step,          setStep]          = useState(initialStep ?? (hasIds ? 'ACCOUNT_LIST' : 'TYPE_SELECTION'))
+  const [selectedId,    setSelectedId]    = useState(hasIds ? MOCK_CONNECTED_IDS[0].id : null)
+  const [basicId,       setBasicId]       = useState('')
+  const [verify,        setVerify]        = useState(null) // null | 'loading' | 'success' | 'not_found' | 'banned' | 'duplicate'
+  const [verifyModal,   setVerifyModal]   = useState(false)
+  const [fading,        setFading]        = useState(false)
+  const [stepKey,       setStepKey]       = useState(0)
 
   // Auto-redirect when LOADING
   useEffect(() => {
@@ -204,14 +229,78 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
     if (!basicId.trim()) return
     setVerify('loading')
     await new Promise(r => setTimeout(r, 1200))
-    setVerify('success')
-    setTimeout(() => {
-      onUnlockFullMode?.(basicId.trim())
-      onExit?.()
-    }, 1600)
+    const id = basicId.trim().toLowerCase()
+    const result = VERIFY_MOCK[id] ?? (id.startsWith('@') ? 'success' : 'not_found')
+    setVerify(result)
+    setVerifyModal(true)
+  }
+
+  const MANAGE_MODAL_CONFIG = {
+    success: {
+      iconBg: 'bg-green-100', icon: <CheckCircle2 size={28} className="text-green-600" />,
+      title: 'เชื่อมต่อสำเร็จ!',
+      body: `พบ Basic ID ${basicId} ในระบบแล้ว\nกำลังเข้าสู่ Full Mode Dashboard…`,
+      primaryLabel: 'เข้าใช้งาน Full Mode',
+      primaryClass: 'bg-[#06C755] hover:bg-[#05b34c] text-white shadow-md shadow-green-100',
+      onPrimary: () => { setVerifyModal(false); onUnlockFullMode?.(basicId.trim()); onExit?.() },
+      showContact: false,
+    },
+    not_found: {
+      iconBg: 'bg-red-100', icon: <X size={28} className="text-red-500" />,
+      title: 'ไม่พบ Basic ID นี้ในระบบ',
+      body: 'กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อทีมงานเพื่อขอความช่วยเหลือ',
+      primaryLabel: 'ลองอีกครั้ง',
+      primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+      onPrimary: () => { setVerify(null); setVerifyModal(false) },
+      showContact: true,
+    },
+    banned: {
+      iconBg: 'bg-orange-100', icon: <Lock size={28} className="text-orange-500" />,
+      title: 'บัญชีนี้ถูกระงับการใช้งาน',
+      body: 'ติดต่อทีมงานเพื่อตรวจสอบสถานะบัญชีและขอคืนสิทธิ์การใช้งาน',
+      primaryLabel: 'ปิด',
+      primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+      onPrimary: () => { setVerify(null); setVerifyModal(false) },
+      showContact: true,
+    },
+    duplicate: {
+      iconBg: 'bg-purple-100', icon: <CheckCircle2 size={28} className="text-purple-500" />,
+      title: 'Basic ID นี้มีในระบบ Sellsuki แล้ว',
+      body: 'หากคุณเป็นเจ้าของบัญชีนี้ ติดต่อ Admin เพื่อเข้าถึงบัญชีของคุณ',
+      primaryLabel: 'ลองอีกครั้ง',
+      primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+      onPrimary: () => { setVerify(null); setVerifyModal(false) },
+      showContact: true,
+    },
   }
 
   return (
+    <>
+    {verifyModal && verify && MANAGE_MODAL_CONFIG[verify] && (() => {
+      const cfg = MANAGE_MODAL_CONFIG[verify]
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7 text-center">
+            <div className={`w-14 h-14 rounded-full ${cfg.iconBg} flex items-center justify-center mx-auto mb-4`}>{cfg.icon}</div>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">{cfg.title}</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-6 whitespace-pre-line">{cfg.body}</p>
+            <div className="flex gap-3">
+              {cfg.showContact && (
+                <a href="https://lin.ee/sellsuki-support" target="_blank" rel="noopener noreferrer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
+                  <MessageCircle size={14} /> ติดต่อ Admin
+                </a>
+              )}
+              <button onClick={cfg.onPrimary}
+                className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors ${cfg.primaryClass}`}>
+                {cfg.primaryLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    })()}
     <div className="w-full max-w-xl">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10">
         {/* ── Fading content wrapper ── */}
@@ -354,6 +443,18 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                   <label className="flex items-center gap-1 text-sm font-semibold text-slate-700 mb-2">
                     Basic ID <BasicIdTooltip /> <span className="text-red-400">*</span>
                   </label>
+
+                  {/* Demo chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {MANAGE_DEMO_CHIPS.map(({ id, label, color }) => (
+                      <button key={id} type="button"
+                        onClick={() => { setBasicId(id); setVerify(null) }}
+                        className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${color}`}>
+                        {id} · {label}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="flex gap-3">
                     <input
                       autoFocus
@@ -376,24 +477,10 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                     >
                       {verify === 'loading'
                         ? <Loader2 size={16} className="animate-spin" />
-                        : 'ตรวจสอบ'
-                      }
+                        : 'ตรวจสอบ'}
                     </button>
                   </div>
                 </div>
-
-                {/* Success state */}
-                {verify === 'success' && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                    <CheckCircle2 size={18} className="text-green-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-green-800">✅ เชื่อมต่อสำเร็จ</p>
-                      <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
-                        <Sparkles size={11} /> กำลังกลับสู่ Full Mode Dashboard…
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -416,6 +503,7 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
         </div>
       </div>
     </div>
+    </>
   )
 }
 
