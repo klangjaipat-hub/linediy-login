@@ -43,24 +43,33 @@ const SERVICES = [
 const SIDEBAR_ITEMS = [
   { icon: Home,          label: 'หน้าหลัก',        locked: false },
   { icon: ShoppingCart,  label: 'ซื้อบริการ',       locked: false },
-  { icon: ClipboardList, label: 'รายการสั่งซื้อ',   locked: true  },
-  { icon: CreditCard,    label: 'แจ้งการชำระเงิน',  locked: true  },
-  { icon: Gift,          label: 'สิทธิพิเศษ',       locked: true  },
-  { icon: FileText,      label: 'เอกสาร',           locked: true  },
+  { icon: Settings,      label: 'จัดการบัญชี',      locked: true  },
+  { icon: ClipboardList, label: 'รายการสั่งซื้อ',   locked: false },
+  { icon: CreditCard,    label: 'แจ้งการชำระเงิน',  locked: false },
+  { icon: Gift,          label: 'สิทธิพิเศษ',       locked: false },
+  { icon: FileText,      label: 'เอกสาร',           locked: false },
 ]
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
-function Toast({ message, type = 'success', onDone }) {
+function Toast({ message, type = 'success', onAction, onDone }) {
   useEffect(() => {
     const t = setTimeout(onDone, 3200)
     return () => clearTimeout(t)
   }, [onDone])
   if (type === 'locked') {
     return (
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-amber-800 text-white text-sm px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 max-w-sm text-center">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-amber-800 text-white text-sm px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 max-w-sm">
         <Lock className="w-4 h-4 text-amber-300 shrink-0" />
-        {message}
+        <span className="flex-1">{message}</span>
+        {onAction && (
+          <button
+            onClick={() => { onAction(); onDone() }}
+            className="shrink-0 whitespace-nowrap bg-white/20 hover:bg-white/30 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
+          >
+            เชื่อมต่อเลย →
+          </button>
+        )}
       </div>
     )
   }
@@ -627,6 +636,126 @@ function PurchaseSuccessScreen({ service, onBackToDashboard }) {
   )
 }
 
+// ─── Empty State ─────────────────────────────────────────────────────────────
+
+function EmptyState({ icon: Icon, title, subtitle, ctaLabel, onCta }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+        <Icon className="w-7 h-7 text-slate-400" />
+      </div>
+      <p className="font-bold text-slate-700 text-base mb-1">{title}</p>
+      <p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">{subtitle}</p>
+      {ctaLabel && (
+        <button onClick={onCta}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100">
+          <ShoppingCart className="w-4 h-4" /> {ctaLabel}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Order History View ───────────────────────────────────────────────────────
+
+function OrderHistoryView({ recentOrder, onBuyService }) {
+  if (!recentOrder) {
+    return (
+      <EmptyState
+        icon={ClipboardList}
+        title="ยังไม่มีรายการสั่งซื้อ"
+        subtitle="เมื่อคุณสั่งซื้อบริการ รายการจะปรากฏที่นี่"
+      />
+    )
+  }
+  const { service, orderRef, date } = recentOrder
+  const Icon = service?.icon ?? ClipboardList
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-800">รายการสั่งซื้อ</h1>
+        <p className="text-sm text-slate-400 mt-0.5">Order History</p>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Table header */}
+        <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <span>บริการ</span>
+          <span className="text-right">ราคา</span>
+          <span className="text-right">สถานะ</span>
+        </div>
+        {/* Order row */}
+        <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-5 py-4 items-center">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-xl ${service?.bg ?? 'bg-slate-100'} flex items-center justify-center shrink-0`}>
+              <Icon className={`w-5 h-5 ${service?.color ?? 'text-slate-500'}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800 text-sm truncate">{service?.title ?? '—'}</p>
+              <p className="text-xs text-slate-400 mt-0.5">#{orderRef} · {date?.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            </div>
+          </div>
+          <p className="font-bold text-slate-700 text-sm text-right whitespace-nowrap">
+            {service?.price ?? '—'}<span className="font-normal text-slate-400 text-xs">{service?.unit ?? ''}</span>
+          </p>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+            รอดำเนินการ
+          </span>
+        </div>
+      </div>
+      <p className="text-xs text-slate-400 mt-4 text-center">ทีมงานจะติดต่อกลับภายใน 1–2 วันทำการ</p>
+    </div>
+  )
+}
+
+// ─── Payment Notification View ────────────────────────────────────────────────
+
+function PaymentNotificationView({ recentOrder, onBuyService }) {
+  if (!recentOrder) {
+    return (
+      <EmptyState
+        icon={CreditCard}
+        title="ยังไม่มีรายการที่ต้องชำระ"
+        subtitle="รายการชำระเงินจะปรากฏที่นี่หลังจากที่คุณสั่งซื้อบริการ"
+      />
+    )
+  }
+  const { service, orderRef, date } = recentOrder
+  const Icon = service?.icon ?? CreditCard
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-800">แจ้งการชำระเงิน</h1>
+        <p className="text-sm text-slate-400 mt-0.5">Payment Notification</p>
+      </div>
+      {/* Order summary */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl ${service?.bg ?? 'bg-slate-100'} flex items-center justify-center shrink-0`}>
+          <Icon className={`w-6 h-6 ${service?.color ?? 'text-slate-500'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-slate-800 text-sm">{service?.title ?? '—'}</p>
+          <p className="text-xs text-slate-400 mt-0.5">#{orderRef} · {date?.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="font-extrabold text-slate-800 text-lg">{service?.price ?? '—'}</p>
+          <p className="text-xs text-slate-400">{service?.unit ?? ''}</p>
+        </div>
+      </div>
+      {/* Upload slip */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p className="text-sm font-semibold text-slate-700 mb-1">แนบสลิปโอนเงิน</p>
+        <p className="text-xs text-slate-400 mb-4">อัปโหลดหลักฐานการชำระเงินเพื่อให้ทีมงานดำเนินการต่อ</p>
+        <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center gap-2 bg-slate-50 cursor-not-allowed opacity-60">
+          <CreditCard className="w-8 h-8 text-slate-300" />
+          <p className="text-sm font-medium text-slate-400">คลิกเพื่ออัปโหลดสลิป</p>
+          <p className="text-xs text-slate-300">PNG, JPG ขนาดไม่เกิน 5MB</p>
+        </div>
+        <p className="text-xs text-slate-400 mt-3 text-center">ฟีเจอร์นี้จะเปิดใช้งานเร็วๆ นี้</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Screen 3: Dashboard ──────────────────────────────────────────────────────
 
 function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLocked, onLogout }) {
@@ -647,7 +776,9 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [selectedService, setSelectedService] = useState(null)
   const [cameFromPicker,      setCameFromPicker]      = useState(false)
   const [blockedServiceModal, setBlockedServiceModal] = useState(false)
+  const [lockedMenuModal,     setLockedMenuModal]     = useState(null)  // stores menu label string
   const [requiresAccountType, setRequiresAccountType] = useState(false) // full-mode user adding new OA
+  const [recentOrder,         setRecentOrder]         = useState(null)  // persists across nav
 
   const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
@@ -702,8 +833,42 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
 
   return (
     <div className="min-h-screen bg-slate-100 flex">
-      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onAction={toast.action} onDone={() => setToast(null)} />}
       {showLinkModal && <LinkAccountModal onClose={() => setShowLinkModal(false)} onUnlock={handleUnlock} />}
+
+      {/* Locked menu modal — blocks interaction until user dismisses */}
+      {lockedMenuModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7 text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6 text-amber-500" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">เมนูนี้ถูกล็อกอยู่</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-1">
+              คุณยังไม่สามารถเข้าใช้งาน
+            </p>
+            <p className="font-semibold text-slate-800 text-sm mb-4">"{lockedMenuModal}"</p>
+            <p className="text-sm text-slate-500 leading-relaxed mb-6">
+              เชื่อมต่อ Basic ID เพื่อปลดล็อกและเข้าถึงทุกฟีเจอร์ในระบบ
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLockedMenuModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={() => { setLockedMenuModal(null); handleNavClick('จัดการ Basic ID') }}
+                className="flex-1 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
+              >
+                เพิ่ม/เชื่อมต่อ Basic ID
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Blocked service modal — Messaging API requires Broadcast first */}
       {blockedServiceModal && (
@@ -749,7 +914,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             <div className="w-8 h-8 bg-[#06C755] rounded-lg flex items-center justify-center shrink-0">
               <MessageCircle className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-gray-800 text-sm">LINE OA Manager</span>
+            <span className="font-bold text-gray-800 text-sm">LINE DIY</span>
           </div>
         </div>
 
@@ -775,7 +940,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             return (
               <button key={label} onClick={() => {
                 if (isItemLocked) {
-                  setToast({ message: `เชื่อมต่อ Basic ID เพื่อเข้าใช้งาน "${label}"`, type: 'locked' })
+                  setLockedMenuModal(label)
                 } else {
                   handleNavClick(label)
                 }
@@ -891,7 +1056,12 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                     <PurchaseValidationHeader
                       service={selectedService}
                       isLocked={locked || requiresAccountType}
-                      onProceed={(p) => { setOrderPayload(p); setPurchaseStep('success') }}
+                      onProceed={(p) => {
+                        const ref = `ORD-${Date.now().toString().slice(-6)}`
+                        setOrderPayload(p)
+                        setRecentOrder({ service: selectedService, payload: p, orderRef: ref, date: new Date() })
+                        setPurchaseStep('success')
+                      }}
                     />
                   </>
                 )}
@@ -905,13 +1075,19 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                 )}
               </div>
 
+            ) : activeMenu === 'รายการสั่งซื้อ' ? (
+              <OrderHistoryView recentOrder={recentOrder} onBuyService={() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }} />
+
+            ) : activeMenu === 'แจ้งการชำระเงิน' ? (
+              <PaymentNotificationView recentOrder={recentOrder} onBuyService={() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }} />
+
             ) : (
               /* Dashboard home (and any other non-purchase route) */
               <>
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-gray-800">สวัสดีครับ คุณ{user.name}</h1>
                   <p className="text-gray-400 text-sm mt-1">
-                    {locked ? 'กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน' : 'ยินดีต้อนรับกลับมาสู่ LINE OA Manager'}
+                    {locked ? 'กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน' : 'ยินดีต้อนรับกลับมาสู่ LINE DIY'}
                   </p>
                 </div>
 

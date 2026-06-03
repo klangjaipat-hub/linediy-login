@@ -227,12 +227,22 @@ function AccountSection({ acc, isLocked }) {
 
             {/* Error inline feedback */}
             {idVerifyState === "error" && (
-              <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
-                <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm text-red-700 font-semibold">ไม่พบ Basic ID นี้ในระบบ</p>
-                  <p className="text-xs text-red-500 mt-0.5">กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อ Admin เพื่อขอความช่วยเหลือ</p>
+              <div className="mt-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm text-red-700 font-semibold">ไม่พบ Basic ID นี้ในระบบ</p>
+                    <p className="text-xs text-red-500 mt-0.5">กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อทีมงานเพื่อขอความช่วยเหลือ</p>
+                  </div>
                 </div>
+                <a
+                  href="https://lin.ee/sellsuki-support"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-colors"
+                >
+                  <MessageSquare size={13} /> ติดต่อ Admin
+                </a>
               </div>
             )}
           </div>
