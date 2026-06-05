@@ -8,6 +8,24 @@ import {
 } from 'lucide-react'
 import PurchaseValidationHeader from './PurchaseValidationHeader'
 
+// ─── Mock Customer Info (existing users — data already on file) ───────────────
+
+const MOCK_EXISTING_CUSTOMER_INFO = {
+  customerType: 'corporate',
+  nationalId: '0105565012345',
+  firstName: 'สมชาย',
+  lastName: 'ใจดี',
+  emailTax: 'somchai.jaidee@sellsuki-store.co.th',
+  emailQuote: 'purchase@sellsuki-store.co.th',
+  phone: '02-123-4567',
+  address: '123/45 อาคารสยามสแควร์วัน ชั้น 8',
+  street: 'ถนนพระรามที่ 1',
+  subdistrict: 'ปทุมวัน',
+  district: 'ปทุมวัน',
+  province: 'กรุงเทพมหานคร',
+  postalCode: '10330',
+}
+
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
 const MOCK_USERS = {
@@ -37,7 +55,7 @@ const SERVICES = [
   { id: 'broadcast', title: 'BROADCAST PACKAGE', icon: Radio,         desc: 'ส่งข้อความหา Follower',   color: 'text-blue-500',   bg: 'bg-blue-50',    price: '฿1,500', unit: '/เดือน' },
   { id: 'premium',   title: 'PREMIUM ID',        icon: Crown,         desc: 'Premium LINE Official ID', color: 'text-yellow-500', bg: 'bg-yellow-50',  price: '฿3,000', unit: '/ปี'    },
   { id: 'chat',      title: 'OA CHAT PACKAGE',   icon: MessageSquare, desc: 'Chat Package สำหรับ OA',  color: 'text-green-500',  bg: 'bg-green-50',   price: '฿990',   unit: '/เดือน' },
-  { id: 'api',       title: 'MESSAGING API',     icon: Zap,           desc: 'API Integration',          color: 'text-purple-500', bg: 'bg-purple-50',  price: '฿2,500', unit: '/เดือน' },
+  { id: 'api',       title: 'ADDITIONAL MESSAGE', icon: Zap,           desc: 'ข้อความเพิ่มเติมสำหรับ OA', color: 'text-purple-500', bg: 'bg-purple-50',  price: '฿2,500', unit: '/เดือน' },
 ]
 
 const SIDEBAR_ITEMS = [
@@ -59,8 +77,9 @@ const VERIFY_MOCK = {
   '@sellsukishop': 'success',
   '@333aaaa':      'success',
   '@mybrand-th':   'success',
-  '@notfound':     'not_found',
-  '@unknown':      'not_found',
+  '@notfound':          'not_found',
+  '@notfound/transfer': 'not_found',
+  '@unknown':           'not_found',
   '@banned':       'banned',
   '@suspended':    'banned',
   '@duplicate':    'duplicate',
@@ -69,7 +88,7 @@ const VERIFY_MOCK = {
 
 const MANAGE_DEMO_CHIPS = [
   { id: '@happyshop', label: 'สำเร็จ',      color: 'bg-green-100 text-green-700 hover:bg-green-200'    },
-  { id: '@notfound',  label: 'ไม่พบ',       color: 'bg-red-100 text-red-700 hover:bg-red-200'          },
+  { id: '@notfound/transfer', label: 'ไม่พบ/โอนย้าย', color: 'bg-red-100 text-red-700 hover:bg-red-200' },
   { id: '@banned',    label: 'ถูกแบน',      color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
   { id: '@duplicate', label: 'มีแล้ว',      color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
 ]
@@ -192,7 +211,7 @@ function LinkAccountModal({ onClose, onUnlock }) {
 //                                      → LOADING (→ auto-redirect)
 // New users skip ACCOUNT_LIST and start at TYPE_SELECTION.
 
-function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRedirectToPurchase }) {
+function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRedirectToPurchase, onTransferMode }) {
   const [step,          setStep]          = useState(initialStep ?? (hasIds ? 'ACCOUNT_LIST' : 'TYPE_SELECTION'))
   const [selectedId,    setSelectedId]    = useState(hasIds ? MOCK_CONNECTED_IDS[0].id : null)
   const [basicId,       setBasicId]       = useState('')
@@ -231,6 +250,12 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
     await new Promise(r => setTimeout(r, 1200))
     const id = basicId.trim().toLowerCase()
     const result = VERIFY_MOCK[id] ?? (id.startsWith('@') ? 'success' : 'not_found')
+    // not_found → silently enter transfer mode, no popup
+    if (result === 'not_found') {
+      setVerify(null)
+      onTransferMode?.(basicId.trim())
+      return
+    }
     setVerify(result)
     setVerifyModal(true)
   }
@@ -246,13 +271,13 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
       showContact: false,
     },
     not_found: {
-      iconBg: 'bg-red-100', icon: <X size={28} className="text-red-500" />,
-      title: 'ไม่พบ Basic ID นี้ในระบบ',
-      body: 'กรุณาตรวจสอบ ID อีกครั้ง หรือติดต่อทีมงานเพื่อขอความช่วยเหลือ',
-      primaryLabel: 'ลองอีกครั้ง',
-      primaryClass: 'bg-slate-800 hover:bg-slate-900 text-white',
-      onPrimary: () => { setVerify(null); setVerifyModal(false) },
-      showContact: true,
+      iconBg: 'bg-blue-100', icon: <UserPlus size={28} className="text-blue-500" />,
+      title: 'ไม่พบข้อมูลบัญชีเดิม',
+      body: `ไม่พบ Basic ID ${basicId} ในระบบ\nระบบจะดำเนินการให้คุณเป็นลูกค้าโอนย้ายเข้า Sellsuki`,
+      primaryLabel: 'ดำเนินการต่อ (โอนย้าย)',
+      primaryClass: 'bg-[#06C755] hover:bg-[#05b34c] text-white shadow-md shadow-green-100',
+      onPrimary: () => { setVerifyModal(false); onTransferMode?.(basicId.trim()) },
+      showContact: false,
     },
     banned: {
       iconBg: 'bg-orange-100', icon: <Lock size={28} className="text-orange-500" />,
@@ -401,7 +426,7 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                   </div>
                   <p className="font-bold text-slate-800 text-sm leading-tight mb-1">บัญชีเดิม</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    สำหรับบัญชีที่เคยซื้อแพ็กเกจกับ Sellsuki แล้ว
+                    สำหรับผู้ที่มี Basic ID เดิมอยู่แล้ว
                   </p>
                 </button>
 
@@ -413,9 +438,9 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                   <div className="w-11 h-11 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-4 transition-colors">
                     <UserPlus size={22} className="text-blue-500" />
                   </div>
-                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">เปิดบัญชีใหม่/ย้ายบัญชี</p>
+                  <p className="font-bold text-slate-800 text-sm leading-tight mb-1">เปิดบัญชีใหม่</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    สำหรับผู้ที่ต้องการเปิดบัญชีหรือย้ายเข้า Sellsuki
+                    สำหรับผู้ที่ยังไม่มี Basic ID และต้องการเปิดบัญชีใหม่กับ Sellsuki
                   </p>
                 </button>
               </div>
@@ -429,13 +454,7 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
                 <ChevronLeft size={15} /> กลับ
               </button>
 
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1 mb-4">
-                <UserCheck size={13} className="text-green-600" />
-                <span className="text-xs font-semibold text-green-700">ลูกค้าปัจจุบัน</span>
-              </div>
-
-              <h2 className="text-xl font-bold text-slate-800 mb-1 flex items-center gap-1">ตรวจสอบ Basic ID <BasicIdTooltip /></h2>
+<h2 className="text-xl font-bold text-slate-800 mb-1 flex items-center gap-1">ตรวจสอบ Basic ID <BasicIdTooltip /></h2>
               <p className="text-sm text-slate-500 mb-7">กรอก Basic ID เพื่อยืนยันบัญชีและเชื่อมต่อ</p>
 
               <div className="space-y-3">
@@ -494,7 +513,7 @@ function ManageBasicIdCard({ hasIds, initialStep, onExit, onUnlockFullMode, onRe
               <p className="font-bold text-slate-800 text-lg mb-2">กำลังนำทาง…</p>
               <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
                 กำลังพาคุณไปยังหน้า "ซื้อบริการ"<br />
-                เพื่อดำเนินการเปิดบัญชีใหม่ / ย้ายค่าย…
+                เพื่อดำเนินการเปิดบัญชีใหม่…
               </p>
               <p className="text-xs text-slate-300 mt-3">Redirecting to Buy Service page...</p>
             </div>
@@ -795,6 +814,85 @@ function OrderHistoryView({ recentOrder, onBuyService }) {
   )
 }
 
+// ─── Manage Account View ─────────────────────────────────────────────────────
+
+function ManageAccountView({ customerInfo, isExistingUser, onBuyService }) {
+  if (!customerInfo) {
+    return (
+      <div className="max-w-2xl">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-slate-800">จัดการบัญชี</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Manage Account</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-10 flex flex-col items-center text-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+            <UserCog className="w-7 h-7 text-blue-500" />
+          </div>
+          <div>
+            <p className="font-bold text-slate-800 text-base mb-2">ยังไม่มีข้อมูลบัญชี</p>
+            <p className="text-sm text-slate-500 leading-relaxed max-w-sm">
+              ข้อมูลของท่านจะปรากฏที่นี่หลังจากที่ท่านซื้อบริการ<br />
+              กรุณาดำเนินการซื้อบริการก่อน — ข้อมูลบัญชีจะถูกกรอกในขั้นตอนการซื้อ
+            </p>
+          </div>
+          <button
+            onClick={onBuyService}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-semibold text-sm transition-colors shadow-md shadow-green-100"
+          >
+            <ShoppingCart className="w-4 h-4" /> ซื้อบริการ
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  function InfoRow({ label, value }) {
+    if (!value) return null
+    return (
+      <div className="flex justify-between gap-4 py-2.5 border-b border-slate-100 last:border-0">
+        <span className="text-sm text-slate-500 shrink-0">{label}</span>
+        <span className="text-sm font-medium text-slate-800 text-right">{value}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-800">จัดการบัญชี</h1>
+        <p className="text-sm text-slate-400 mt-0.5">Manage Account</p>
+      </div>
+
+{/* ข้อมูลร้านค้า หรือบริษัท */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">ข้อมูลร้านค้า หรือบริษัท</p>
+        <InfoRow label="ประเภท" value={customerInfo.customerType === 'individual' ? 'บุคคลธรรมดา' : 'นิติบุคคล'} />
+        <InfoRow label="เลขประจำตัวประชาชน" value={customerInfo.nationalId} />
+      </div>
+
+      {/* ข้อมูลผู้ติดต่อ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">ข้อมูลผู้ติดต่อ</p>
+        <InfoRow label="ชื่อ-นามสกุล" value={`${customerInfo.firstName} ${customerInfo.lastName}`.trim()} />
+        <InfoRow label="Email (ใบกำกับภาษี)" value={customerInfo.emailTax} />
+        <InfoRow label="Email (ใบเสนอราคา)" value={customerInfo.emailQuote} />
+        <InfoRow label="เบอร์โทรศัพท์" value={customerInfo.phone} />
+      </div>
+
+      {/* ที่อยู่ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">ที่อยู่ของร้านค้า หรือบริษัท</p>
+        <InfoRow label="ที่อยู่" value={customerInfo.address} />
+        <InfoRow label="ถนน" value={customerInfo.street} />
+        <InfoRow label="แขวง/ตำบล" value={customerInfo.subdistrict} />
+        <InfoRow label="เขต/อำเภอ" value={customerInfo.district} />
+        <InfoRow label="จังหวัด" value={customerInfo.province} />
+        <InfoRow label="รหัสไปรษณีย์" value={customerInfo.postalCode} />
+      </div>
+    </div>
+  )
+}
+
 // ─── Payment Notification View ────────────────────────────────────────────────
 
 function PaymentNotificationView({ recentOrder, onBuyService }) {
@@ -865,13 +963,16 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
   const [cameFromPicker,      setCameFromPicker]      = useState(false)
   const [blockedServiceModal, setBlockedServiceModal] = useState(false)
   const [lockedMenuModal,     setLockedMenuModal]     = useState(null)  // stores menu label string
-  const [requiresAccountType, setRequiresAccountType] = useState(false) // full-mode user adding new OA
+  const [purchaseEntryMode,   setPurchaseEntryMode]   = useState(null)  // 'new' | 'transfer' | null
+  const [transferBasicId,     setTransferBasicId]     = useState(null)  // persists for transfer customers
   const [recentOrder,         setRecentOrder]         = useState(null)  // persists across nav
+  const [savedCustomerInfo,   setSavedCustomerInfo]   = useState(null)  // saved from purchase form
+  const [purchasedServices,   setPurchasedServices]   = useState(new Set())  // tracks completed purchases
 
   const isManageView = activeMenu === 'จัดการ Basic ID' && !showPurchase
 
   const handlePurchase = (service) => {
-    if (locked && service.id === 'api') {
+    if (service.id === 'api' && !purchasedServices.has('broadcast')) {
       setBlockedServiceModal(true)
       return
     }
@@ -900,7 +1001,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setManageEntryStep(null)
     setPurchaseStep(1)
     setOrderPayload(null)
-    setRequiresAccountType(false)
+    setPurchaseEntryMode(null)
   }
 
   const handleGoManageNewUser = () => {
@@ -914,9 +1015,20 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setCameFromPicker(false)
     setPurchaseStep(1)
     setOrderPayload(null)
-    setRequiresAccountType(true)
+    setPurchaseEntryMode('new')
     setShowPurchase(true)
     setActiveMenu('ซื้อบริการ')
+  }
+
+  const handleTransferMode = (basicId) => {
+    handleUnlock(basicId)
+    setTransferBasicId(basicId)
+    setSelectedService(null)
+    setCameFromPicker(false)
+    setPurchaseStep(1)
+    setOrderPayload(null)
+    setShowPurchase(false)
+    setActiveMenu('หน้าหลัก')
   }
 
   return (
@@ -967,9 +1079,9 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
               <Lock className="w-6 h-6 text-orange-500" />
             </div>
-            <h2 className="text-lg font-bold text-slate-800 mb-2">ต้องซื้อ Broadcast ก่อน</h2>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">ต้องซื้อ Broadcast Package ก่อน</h2>
             <p className="text-sm text-slate-500 leading-relaxed mb-5">
-              Messaging API จำเป็นต้องใช้งานร่วมกับ Broadcast Package<br />
+              Additional Message จำเป็นต้องใช้งานร่วมกับ Broadcast Package<br />
               กรุณาซื้อ <span className="font-semibold text-slate-700">Broadcast Package</span> ก่อนเพื่อเปิดใช้งานบริการนี้
             </p>
             <div className="flex gap-3">
@@ -1080,6 +1192,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             onExit={() => handleNavClick('หน้าหลัก')}
             onUnlockFullMode={handleUnlock}
             onRedirectToPurchase={handleRedirectToPurchase}
+            onTransferMode={handleTransferMode}
           />
         </main>
 
@@ -1115,7 +1228,14 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                       {SERVICES.map(({ id, title, icon: Icon, desc, color, bg, price, unit }) => (
                         <button
                           key={id}
-                          onClick={() => { setSelectedService({ id, title, icon: Icon, desc, color, bg, price, unit }); setCameFromPicker(true) }}
+                          onClick={() => {
+                            if (id === 'api' && !purchasedServices.has('broadcast')) {
+                              setBlockedServiceModal(true)
+                              return
+                            }
+                            setSelectedService({ id, title, icon: Icon, desc, color, bg, price, unit })
+                            setCameFromPicker(true)
+                          }}
                           className="group text-left bg-white border-2 border-slate-200 hover:border-[#06C755] rounded-2xl p-5 transition-all hover:shadow-md cursor-pointer flex items-center gap-4"
                         >
                           <div className={`w-14 h-14 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
@@ -1143,11 +1263,15 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                     </h2>
                     <PurchaseValidationHeader
                       service={selectedService}
-                      isLocked={locked || requiresAccountType}
+                      isLocked={locked}
+                      entryMode={purchaseEntryMode ?? (!locked && transferBasicId ? 'transfer' : null)}
+                      prefilledBasicId={transferBasicId}
                       onProceed={(p) => {
                         const ref = `ORD-${Date.now().toString().slice(-6)}`
                         setOrderPayload(p)
                         setRecentOrder({ service: selectedService, payload: p, orderRef: ref, date: new Date() })
+                        if (p.customerInfo) setSavedCustomerInfo(p.customerInfo)
+                        setPurchasedServices(prev => new Set([...prev, selectedService.id]))
                         setPurchaseStep('success')
                       }}
                     />
@@ -1169,14 +1293,31 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             ) : activeMenu === 'แจ้งการชำระเงิน' ? (
               <PaymentNotificationView recentOrder={recentOrder} onBuyService={() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }} />
 
+            ) : activeMenu === 'จัดการบัญชี' ? (
+              <ManageAccountView
+                customerInfo={
+                  savedCustomerInfo ??
+                  (!locked && !transferBasicId ? MOCK_EXISTING_CUSTOMER_INFO : null)
+                }
+                isExistingUser={!locked && !transferBasicId && !savedCustomerInfo}
+                onBuyService={() => { setShowPurchase(true); setActiveMenu('ซื้อบริการ') }}
+              />
+
             ) : (
               /* Dashboard home (and any other non-purchase route) */
               <>
                 <div className="mb-6">
-                  <h1 className="text-2xl font-bold text-gray-800">สวัสดีครับ คุณ{user.name}</h1>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {locked ? 'กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน' : 'ยินดีต้อนรับกลับมาสู่ LINE DIY'}
-                  </p>
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    {locked ? `สวัสดีครับ คุณ${user.name}` : `ยินดีต้อนรับกลับมา คุณ${user.name}`}
+                  </h1>
+                  {account?.id && !locked && (
+                    <p className="text-2xl font-bold text-gray-800 mt-0.5">
+                      คุณกำลังใช้บริการ Basic ID <span className="text-[#06C755]">{account.id}</span>
+                    </p>
+                  )}
+                  {locked && (
+                    <p className="text-gray-400 text-sm mt-1">กรุณาซื้อบริการหรือเชื่อมต่อ Basic ID เพื่อเริ่มใช้งาน</p>
+                  )}
                 </div>
 
                 {/* Locked banner */}
