@@ -5,9 +5,9 @@ Name: Persona C (คุณขาประจำ - The Regular)
 Background: You are an active, loyal Sellsuki customer. You already have a registered Basic ID ("@sellsukishop"). You are logging in today from a brand new computer.
 Goal: You just want to check your "Order History" (รายการสั่งซื้อ). You are NOT looking to buy a new package today.
 2. The Task: Simulate walking through the following expected flow step-by-step. At each step, use "Think Aloud" protocol to express your simulated thoughts, confusions, or decisions.
-Step 1: Login with LINE and land on the Dashboard. Notice that the "Order History" (รายการสั่งซื้อ) menu on the left sidebar is locked/grayed out.
-Step 2: Look around the UI and click the "Manage Basic ID" (จัดการ Basic ID) menu on the sidebar.
-Step 3: A clean, centered modal appears. Choose the "Current Customer" (ลูกค้าปัจจุบัน) option.
+Step 1: Login with LINE and land on the Dashboard. Notice that the "Order History" (รายการสั่งซื้อ) have no order history data.
+Step 2: Look around the UI to fing place to switch to existing basic id account and click the place that might have the function to Manage Basic ID on the sidebar.
+Step 3: A clean, centered modal appears. Choose the "บัญชีเดิม" option.
 Step 4: Enter your Basic ID "@sellsukishop" and click Verify.
 Step 5: See the success message and notice the sidebar menus unlock, allowing you to access Full Mode.
 3. Evaluation & Output Requirements: After simulating the walk-through, generate a "UX Testing Report" evaluating the experience based exactly on these 4 metrics:

@@ -21,10 +21,14 @@ const VERIFY_MOCK = {
   // 🔁 Already registered with Sellsuki
   '@duplicate':  'duplicate',
   '@existing':   'duplicate',
+  // 🔄 Not found — transfer path
+  '@notfound':          'not_found',
+  '@notfound/transfer': 'not_found',
 }
 
 const DEMO_CHIPS = [
   { id: '@happyshop', label: 'สำเร็จ',      color: 'bg-green-100 text-green-700 hover:bg-green-200'   },
+  { id: '@notfound',  label: 'ไม่พบในระบบ', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200'      },
   { id: '@banned',    label: 'ถูกแบน',      color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
   { id: '@duplicate', label: 'มีในระบบแล้ว',color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
 ]
@@ -82,7 +86,7 @@ function RadioCard({ id, name, value, checked, onChange, label, sublabel }) {
       <input id={id} type="radio" name={name} value={value} checked={checked} onChange={onChange}
         className="mt-0.5 accent-green-500 w-4 h-4 shrink-0" />
       <span>
-        <span className="block font-semibold text-slate-800 text-sm leading-snug">{label}</span>
+        <span className="block font-semibold text-slate-800 text-xs leading-snug">{label}</span>
         {sublabel && <span className="block text-xs text-slate-500 mt-0.5">{sublabel}</span>}
       </span>
     </label>
@@ -121,13 +125,21 @@ function useAccountForm(isLocked, entryMode, initialBasicId) {
   const [displayName,    setDisplayName]    = useState("");
   const [basicId,        setBasicId]        = useState(initialBasicId ?? "");
   // Transfer mode starts as pre-verified
-  const [idVerifyState,  setIdVerifyState]  = useState(entryMode === 'transfer' ? 'success' : null);
+  const [idVerifyState,  setIdVerifyState]  = useState(entryMode === 'transfer' ? 'transfer' : null);
   const [paymentChannel, setPaymentChannel] = useState("");
   const [agencyName,     setAgencyName]     = useState("");
 
   const handleTypeChange = (val) => {
-    setAccountType(val); setDisplayName(""); setBasicId("");
-    setIdVerifyState(null); setPaymentChannel(""); setAgencyName("");
+    setAccountType(val); setDisplayName("");
+    if (val === 'existing' && entryMode === 'transfer' && initialBasicId) {
+      // Restore pre-filled transfer Basic ID when switching back to 'existing'
+      setBasicId(initialBasicId);
+      setIdVerifyState('transfer');
+    } else {
+      setBasicId("");
+      setIdVerifyState(null);
+    }
+    setPaymentChannel(""); setAgencyName("");
   };
 
   const handleBasicIdChange = (val) => {
@@ -157,21 +169,24 @@ function useAccountForm(isLocked, entryMode, initialBasicId) {
     entryMode === 'new'
       ? displayName.trim() !== ""
     : entryMode === 'transfer'
-      ? displayName.trim() !== "" && paymentChannel !== "" &&
-        (paymentChannel !== "other_agency" || agencyName.trim() !== "")
-    : !isLocked || (
-        displayName.trim() !== "" && (
-          accountType === "new" ||
-          (idVerifyState === "success" && paymentChannel !== "" &&
+      ? (accountType === 'new'
+          ? displayName.trim() !== ""
+          : (idVerifyState === 'success' || idVerifyState === 'transfer') && displayName.trim() !== "" && paymentChannel !== "" &&
             (paymentChannel !== "other_agency" || agencyName.trim() !== ""))
-        )
+    : !isLocked || (
+        accountType === "new"
+          ? displayName.trim() !== ""
+          : idVerifyState === "success" && paymentChannel !== "" &&
+            (paymentChannel !== "other_agency" || agencyName.trim() !== "")
       );
 
   const payload =
     entryMode === 'new'
       ? { type: "new", displayName }
     : entryMode === 'transfer'
-      ? { type: "transfer", displayName, basicId: initialBasicId, paymentChannel, agencyName: paymentChannel === "other_agency" ? agencyName : "" }
+      ? (accountType === 'new'
+          ? { type: "new", displayName }
+          : { type: "transfer", basicId: basicId || initialBasicId, displayName, paymentChannel, agencyName: paymentChannel === "other_agency" ? agencyName : "" })
     : accountType === "new"
       ? { type: "new", displayName }
       : { type: "existing", displayName, basicId, paymentChannel, agencyName: paymentChannel === "other_agency" ? agencyName : "" };
@@ -195,28 +210,33 @@ function useAccountForm(isLocked, entryMode, initialBasicId) {
 
 // ---------------------------------------------------------------------------
 // useCustomerInfo — customer/billing information state hook
+// Pass initialData to pre-fill all fields (full-mode / existing users).
 // ---------------------------------------------------------------------------
-function useCustomerInfo() {
-  const [customerType, setCustomerType] = useState('individual') // 'individual' | 'corporate'
-  const [nationalId,   setNationalId]   = useState('')
-  const [firstName,    setFirstName]    = useState('')
-  const [lastName,     setLastName]     = useState('')
-  const [emailTax,     setEmailTax]     = useState('')
-  const [emailQuote,   setEmailQuote]   = useState('')
+function useCustomerInfo(initialData) {
+  const d = initialData ?? {}
+  const [customerType, setCustomerType] = useState(d.customerType ?? 'individual')
+  const [nationalId,   setNationalId]   = useState(d.nationalId   ?? '')
+  const [firstName,    setFirstName]    = useState(d.firstName    ?? '')
+  const [lastName,     setLastName]     = useState(d.lastName     ?? '')
+  const [emailTax,     setEmailTax]     = useState(d.emailTax     ?? '')
+  const [emailQuote,   setEmailQuote]   = useState(d.emailQuote   ?? '')
   const [sameEmail,    setSameEmail]    = useState(false)
-  const [phone,        setPhone]        = useState('')
-  const [address,      setAddress]      = useState('')
-  const [street,       setStreet]       = useState('')
-  const [subdistrict,  setSubdistrict]  = useState('')
-  const [district,     setDistrict]     = useState('')
-  const [province,     setProvince]     = useState('')
-  const [postalCode,   setPostalCode]   = useState('')
+  const [phone,        setPhone]        = useState(d.phone        ?? '')
+  const [address,      setAddress]      = useState(d.address      ?? '')
+  const [street,       setStreet]       = useState(d.street       ?? '')
+  const [subdistrict,  setSubdistrict]  = useState(d.subdistrict  ?? '')
+  const [district,     setDistrict]     = useState(d.district     ?? '')
+  const [province,     setProvince]     = useState(d.province     ?? '')
+  const [postalCode,   setPostalCode]   = useState(d.postalCode   ?? '')
 
-  const isCustomerValid =
+  const isPrefilled = !!initialData
+
+  const isCustomerValid = isPrefilled || (
     firstName.trim() !== '' && lastName.trim() !== '' &&
     emailTax.trim() !== '' && phone.trim() !== '' &&
     address.trim() !== '' && subdistrict.trim() !== '' &&
     district.trim() !== '' && province !== '' && postalCode.trim() !== ''
+  )
 
   const customerPayload = {
     customerType, nationalId,
@@ -241,7 +261,7 @@ function useCustomerInfo() {
     district, setDistrict,
     province, setProvince,
     postalCode, setPostalCode,
-    isCustomerValid, customerPayload,
+    isPrefilled, isCustomerValid, customerPayload,
   }
 }
 
@@ -253,9 +273,18 @@ const VERIFY_MODAL_CONFIG = {
     iconBg: 'bg-green-100',
     icon: (size) => <CheckCircle2 size={size} className="text-green-600" />,
     title: 'ตรวจพบข้อมูลบัญชี',
-    body: (id) => `พบ Basic ID ${id} ในระบบแล้ว\nกรุณาระบุช่องทางชำระเงินเดิมเพื่อดำเนินการต่อ`,
-    primaryLabel: 'ดำเนินการต่อ',
-    primaryClass: 'bg-[#06C755] hover:bg-[#05b34c] text-white shadow-md shadow-green-100',
+    body: (id) => `พบ Basic ID ${id} ในระบบแล้ว\nระบบจะปลดล็อกให้คุณเข้าสู่ Full Mode ทันที`,
+    primaryLabel: 'ปลดล็อก Full Mode',
+    primaryClass: 'bg-[#00BB03] hover:bg-[#009a02] text-white shadow-md shadow-green-100',
+    showContact: false,
+  },
+  not_found: {
+    iconBg: 'bg-blue-100',
+    icon: (size) => <UserPlus size={size} className="text-blue-500" />,
+    title: 'ไม่พบ Basic ID ในระบบ',
+    body: (id) => `ไม่พบ Basic ID ${id} ในระบบ\nระบบจะดำเนินการให้คุณเป็นลูกค้าโอนย้ายเข้า Sellsuki`,
+    primaryLabel: 'ดำเนินการต่อ (โอนย้าย)',
+    primaryClass: 'bg-[#00BB03] hover:bg-[#009a02] text-white shadow-md shadow-green-100',
     showContact: false,
   },
   banned: {
@@ -278,10 +307,10 @@ const VERIFY_MODAL_CONFIG = {
   },
 }
 
-function VerifyModal({ state, basicId, onContinue, onRetry }) {
+function VerifyModal({ state, basicId, onContinue, onTransfer, onRetry }) {
   const cfg = VERIFY_MODAL_CONFIG[state]
   if (!cfg) return null
-  const isPrimary = state === 'success' ? onContinue : onRetry
+  const isPrimary = state === 'success' ? onContinue : state === 'not_found' ? onTransfer : onRetry
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -289,17 +318,17 @@ function VerifyModal({ state, basicId, onContinue, onRetry }) {
         <div className={`w-14 h-14 rounded-full ${cfg.iconBg} flex items-center justify-center mx-auto mb-4`}>
           {cfg.icon(28)}
         </div>
-        <h2 className="text-lg font-bold text-slate-800 mb-2">{cfg.title}</h2>
-        <p className="text-sm text-slate-500 leading-relaxed mb-6 whitespace-pre-line">{cfg.body(basicId)}</p>
+        <h2 className="text-xs font-bold text-slate-800 mb-2">{cfg.title}</h2>
+        <p className="text-xs text-slate-500 leading-relaxed mb-6 whitespace-pre-line">{cfg.body(basicId)}</p>
         <div className="flex gap-3">
           {cfg.showContact && (
             <a href="https://lin.ee/sellsuki-support" target="_blank" rel="noopener noreferrer"
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
               <MessageSquare size={14} /> ติดต่อ Admin
             </a>
           )}
           <button onClick={isPrimary}
-            className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors ${cfg.primaryClass}`}>
+            className={`flex-1 py-2.5 rounded-xl font-semibold text-xs transition-colors ${cfg.primaryClass}`}>
             {cfg.primaryLabel}
           </button>
         </div>
@@ -312,7 +341,7 @@ function VerifyModal({ state, basicId, onContinue, onRetry }) {
 // AccountSection — shared account fields used across all forms
 // entryMode: null | 'new' | 'transfer'
 // ---------------------------------------------------------------------------
-function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
+function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFullMode, onTransferMode }) {
   if (!isLocked && !entryMode) return null;
 
   const {
@@ -326,10 +355,10 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
 
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   useEffect(() => {
-    // Don't auto-open modal for transfer mode (idVerifyState starts as 'success')
-    if (entryMode === 'transfer') return;
+    // Don't auto-open modal for pre-seeded transfer state
+    if (idVerifyState === 'transfer') return;
     if (idVerifyState && idVerifyState !== "loading") setVerifyModalOpen(true);
-  }, [idVerifyState, entryMode]);
+  }, [idVerifyState]);
 
   // ── Mode: 'new' — only Display Name field ──────────────────────────────────
   if (entryMode === 'new') {
@@ -337,66 +366,26 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
       <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
         <div>
-          <label htmlFor="acc-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
+          <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
             ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
           </label>
           <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
             placeholder="เช่น My Brand Store"
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
         </div>
       </div>
     );
   }
 
-  // ── Mode: 'transfer' — Display Name + payment channel, Basic ID pre-filled ─
-  if (entryMode === 'transfer') {
-    return (
-      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
-
-        {/* Display Name */}
-        <div>
-          <label htmlFor="acc-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
-            ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-          </label>
-          <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            placeholder="เช่น My Brand Store"
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
-        </div>
-
-        {/* Payment channel (always shown — no verify step needed) */}
-        <fieldset>
-          <legend className="text-sm font-semibold text-slate-700 mb-1">
-            ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
-          </legend>
-          <p className="text-xs text-slate-400 mb-3">Previous Payment Channel</p>
-          <div className="grid grid-cols-2 gap-3">
-            <RadioCard id="pay-line"   name="paymentChannel" value="line_thailand" checked={paymentChannel === "line_thailand"} onChange={() => handleChannelChange("line_thailand")} label="ชำระผ่าน LINE Thailand"   sublabel="โดยตรงกับ LINE Thailand"   />
-            <RadioCard id="pay-agency" name="paymentChannel" value="other_agency"  checked={paymentChannel === "other_agency"}  onChange={() => handleChannelChange("other_agency")}  label="ชำระผ่าน Agency เจ้าอื่น" sublabel="ผ่านตัวแทนขายรายอื่น" />
-          </div>
-          <Reveal show={paymentChannel === "other_agency"}>
-            <div className="mt-3">
-              <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
-                <Building2 size={14} className="text-slate-400" /> ชื่อ Agency <span className="text-red-400">*</span>
-              </label>
-              <input id="acc-agency-name" type="text" value={agencyName} onChange={e => setAgencyName(e.target.value)}
-                placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
-            </div>
-          </Reveal>
-        </fieldset>
-      </div>
-    );
-  }
-
-  // ── Default: isLocked — show both type options ──────────────────────────────
+  // ── Default: isLocked or entryMode='transfer' — show both type options ────────
   return (
     <>
     {verifyModalOpen && (
       <VerifyModal
         state={idVerifyState}
         basicId={basicId}
-        onContinue={() => setVerifyModalOpen(false)}
+        onContinue={() => { setVerifyModalOpen(false); onUnlockFullMode?.(basicId); }}
+        onTransfer={() => { setVerifyModalOpen(false); onTransferMode?.(basicId); }}
         onRetry={() => { resetVerify(); setVerifyModalOpen(false); }}
       />
     )}
@@ -405,7 +394,7 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
 
       {/* Account type */}
       <fieldset>
-        <legend className="text-sm font-semibold text-slate-700 mb-3">
+        <legend className="text-xs font-semibold text-slate-700 mb-3">
           ประเภทบัญชี <span className="text-red-400">*</span>
         </legend>
         <div className="grid grid-cols-2 gap-3">
@@ -414,23 +403,13 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
         </div>
       </fieldset>
 
-      {/* Display Name */}
-      <div>
-        <label htmlFor="acc-display-name" className="block text-sm font-semibold text-slate-700 mb-2">
-          ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-        </label>
-        <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-          placeholder="เช่น My Brand Store"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
-      </div>
-
-      {/* Existing-only fields */}
+      {/* Existing-only: Basic ID + Verify (shown before Display Name so user can unlock immediately) */}
       <Reveal show={accountType === "existing"}>
         <div className="space-y-4 pt-1">
 
           {/* Basic ID + Verify button */}
           <div>
-            <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 mb-2">
+            <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
               Basic ID
               <Tooltip text="Basic ID คือรหัส @username ของ LINE OA เช่น @myshop — ใช้สำหรับค้นหาและจดจำบัญชีของคุณ"><Info size={14} /></Tooltip>
               <span className="text-red-400">*</span>
@@ -454,10 +433,12 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
                 onChange={e => handleBasicIdChange(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleVerifyId()}
                 placeholder="@your-id"
-                disabled={idVerifyState === "success"}
-                className={`flex-1 rounded-xl border px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
+                disabled={idVerifyState === "success" || idVerifyState === "transfer"}
+                className={`flex-1 rounded-xl border px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:ring-2 transition bg-white ${
                   idVerifyState === "success"
                     ? "border-green-500 bg-green-50 focus:ring-green-100"
+                    : idVerifyState === "transfer"
+                    ? "border-orange-400 bg-orange-50 focus:ring-orange-100"
                     : ["banned","duplicate"].includes(idVerifyState)
                     ? "border-red-400 focus:ring-red-100"
                     : "border-slate-300 focus:border-green-500 focus:ring-green-200"
@@ -466,29 +447,44 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
               <button
                 type="button"
                 onClick={handleVerifyId}
-                disabled={idVerifyState === "loading" || idVerifyState === "success" || !basicId.trim()}
-                className={`px-4 py-3 rounded-xl font-semibold text-sm transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                disabled={idVerifyState === "loading" || idVerifyState === "success" || idVerifyState === "transfer" || !basicId.trim()}
+                className={`px-4 py-3 rounded-xl font-semibold text-xs transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   idVerifyState === "success"
                     ? "bg-green-100 text-green-700 cursor-default"
-                    : "bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white"
+                    : idVerifyState === "transfer"
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-[#00BB03] hover:bg-[#009a02] disabled:bg-slate-200 disabled:text-slate-400 text-white"
                 }`}
               >
                 {idVerifyState === "loading"
                   ? <><Loader2 size={14} className="animate-spin" /> กำลังตรวจสอบ</>
                   : idVerifyState === "success"
                   ? <><CheckCircle2 size={14} /> ตรวจสอบแล้ว</>
+                  : idVerifyState === "transfer"
+                  ? "ตรวจสอบ"
                   : ["banned","duplicate"].includes(idVerifyState)
                   ? "ลองอีกครั้ง"
                   : "ตรวจสอบ"}
               </button>
             </div>
-
           </div>
 
-          {/* Payment channel — revealed after successful verification */}
-          <Reveal show={idVerifyState === "success"}>
+          {/* Display Name — transfer users need this even on the existing path */}
+          <Reveal show={entryMode === 'transfer' && (idVerifyState === 'transfer' || idVerifyState === 'success')}>
+            <div>
+              <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
+                ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+              </label>
+              <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+                placeholder="เช่น My Brand Store"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+            </div>
+          </Reveal>
+
+          {/* Payment channel — revealed after successful verification or transfer pre-fill */}
+          <Reveal show={idVerifyState === "success" || idVerifyState === "transfer"}>
             <fieldset>
-              <legend className="text-sm font-semibold text-slate-700 mb-1">
+              <legend className="text-xs font-semibold text-slate-700 mb-1">
                 ช่องทางที่เคยชำระเงินมาก่อน <span className="text-red-400">*</span>
               </legend>
               <p className="text-xs text-slate-400 mb-3">Previous Payment Channel</p>
@@ -498,17 +494,29 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
               </div>
               <Reveal show={paymentChannel === "other_agency"}>
                 <div className="mt-3">
-                  <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+                  <label htmlFor="acc-agency-name" className="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-2">
                     <Building2 size={14} className="text-slate-400" /> ชื่อ Agency <span className="text-red-400">*</span>
                   </label>
                   <input id="acc-agency-name" type="text" value={agencyName} onChange={e => setAgencyName(e.target.value)}
                     placeholder="กรอกชื่อ Agency ที่เคยชำระเงินผ่าน"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
                 </div>
               </Reveal>
             </fieldset>
           </Reveal>
 
+        </div>
+      </Reveal>
+
+      {/* Display Name — only shown for new account type */}
+      <Reveal show={accountType === "new"}>
+        <div>
+          <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
+            ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+          </label>
+          <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+            placeholder="เช่น My Brand Store"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition" />
         </div>
       </Reveal>
     </div>
@@ -519,8 +527,8 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId }) {
 // ---------------------------------------------------------------------------
 // CustomerInfoSection — customer/billing info, shown on every purchase form
 // ---------------------------------------------------------------------------
-const INPUT_CLS = "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
-const SELECT_CLS = "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition appearance-none cursor-pointer"
+const INPUT_CLS = "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition"
+const SELECT_CLS = "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition appearance-none cursor-pointer"
 
 function CustomerInfoSection({ ci }) {
   const {
@@ -538,27 +546,63 @@ function CustomerInfoSection({ ci }) {
     district, setDistrict,
     province, setProvince,
     postalCode, setPostalCode,
+    isPrefilled,
   } = ci
 
+  // ── Full-mode: show confirmed read-only card ─────────────────────────────
+  if (isPrefilled) {
+    const addrLine = [ci.address, ci.street, ci.subdistrict, ci.district, ci.province, ci.postalCode]
+      .filter(Boolean).join(' ')
+    return (
+      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลผู้ซื้อ</p>
+          <span className="flex items-center gap-1 text-xs text-green-600 font-semibold">
+            <CheckCircle2 size={13} /> ยืนยันแล้ว
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+          <div>
+            <p className="text-slate-400 mb-0.5">ชื่อ-นามสกุล</p>
+            <p className="font-semibold text-slate-800">{ci.firstName} {ci.lastName}</p>
+          </div>
+          <div>
+            <p className="text-slate-400 mb-0.5">เบอร์โทรศัพท์</p>
+            <p className="font-semibold text-slate-800">{ci.phone}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-slate-400 mb-0.5">Email (ใบกำกับภาษี)</p>
+            <p className="font-semibold text-slate-800">{ci.emailTax}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-slate-400 mb-0.5">ที่อยู่</p>
+            <p className="font-semibold text-slate-800 leading-relaxed">{addrLine}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── New user: full editable form ─────────────────────────────────────────
   return (
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-7">
       <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">กรอกข้อมูลของท่านให้ครบถ้วน</p>
 
       {/* ── ข้อมูลร้านค้า หรือบริษัท ─────────────────────────────── */}
       <div className="space-y-4">
-        <p className="text-sm font-bold text-slate-700">ข้อมูลร้านค้า หรือบริษัท</p>
+        <p className="text-xs font-bold text-slate-700">ข้อมูลร้านค้า หรือบริษัท</p>
         <div className="flex gap-6">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="ci-customerType" value="individual"
               checked={customerType === 'individual'} onChange={() => setCustomerType('individual')}
               className="accent-green-500 w-4 h-4 shrink-0" />
-            <span className="text-sm text-slate-700">บุคคลธรรมดา</span>
+            <span className="text-xs text-slate-700">บุคคลธรรมดา</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="ci-customerType" value="corporate"
               checked={customerType === 'corporate'} onChange={() => setCustomerType('corporate')}
               className="accent-green-500 w-4 h-4 shrink-0" />
-            <span className="text-sm text-slate-700">นิติบุคคล</span>
+            <span className="text-xs text-slate-700">นิติบุคคล</span>
           </label>
         </div>
         <input type="text" value={nationalId} onChange={e => setNationalId(e.target.value)}
@@ -568,7 +612,7 @@ function CustomerInfoSection({ ci }) {
 
       {/* ── ข้อมูลผู้ติดต่อ ──────────────────────────────────────── */}
       <div className="space-y-3">
-        <p className="text-sm font-bold text-slate-700">ข้อมูลผู้ติดต่อ</p>
+        <p className="text-xs font-bold text-slate-700">ข้อมูลผู้ติดต่อ</p>
         <div className="grid grid-cols-2 gap-3">
           <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
             placeholder="ชื่อ" className={INPUT_CLS} />
@@ -579,7 +623,7 @@ function CustomerInfoSection({ ci }) {
           <input type="checkbox" id="ci-same-email" checked={sameEmail}
             onChange={e => setSameEmail(e.target.checked)}
             className="accent-green-500 w-4 h-4 rounded shrink-0" />
-          <span className="text-sm text-slate-600">Email เดียวกับที่ส่งใบกำกับภาษี</span>
+          <span className="text-xs text-slate-600">Email เดียวกับที่ส่งใบกำกับภาษี</span>
         </label>
         <div className="grid grid-cols-2 gap-3">
           <input type="email" value={emailTax} onChange={e => setEmailTax(e.target.value)}
@@ -599,7 +643,7 @@ function CustomerInfoSection({ ci }) {
 
       {/* ── ที่อยู่ของร้านค้า หรือบริษัท ─────────────────────────── */}
       <div className="space-y-3">
-        <p className="text-sm font-bold text-slate-700">ที่อยู่ของร้านค้า หรือบริษัท</p>
+        <p className="text-xs font-bold text-slate-700">ที่อยู่ของร้านค้า หรือบริษัท</p>
         <input type="text" value={address} onChange={e => setAddress(e.target.value)}
           placeholder="ที่อยู่ (ระบุเลขที่ อาคาร ชั้นที่ ห้องที่ หมู่ หรือซอย)"
           className={INPUT_CLS} />
@@ -643,9 +687,9 @@ function PlanCard({ id, name, checked, onChange, price, unit, features, accent, 
           {badge}
         </span>
       )}
-      <p className={`font-bold text-base mb-1 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>{name}</p>
-      <p className={`text-2xl font-extrabold mb-0.5 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>
-        {price}<span className="text-sm font-normal text-slate-400 ml-1">{unit}</span>
+      <p className={`font-bold text-xs mb-1 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>{name}</p>
+      <p className={`text-[22px] font-extrabold mb-0.5 ${checked ? `text-${accent}-700` : "text-slate-800"}`}>
+        {price}<span className="text-xs font-normal text-slate-400 ml-1">{unit}</span>
       </p>
       <ul className="mt-3 space-y-1.5">
         {features.map((f, i) => (
@@ -662,9 +706,9 @@ function PlanCard({ id, name, checked, onChange, price, unit, features, accent, 
 // ===========================================================================
 // FORM 1 — BROADCAST PACKAGE
 // ===========================================================================
-function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
+function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
-  const ci  = useCustomerInfo();
+  const ci  = useCustomerInfo(prefillCustomerInfo);
   const [plan, setPlan] = useState(""); // "basic" | "pro"
 
   const canSubmit = acc.isValid && plan !== "" && ci.isCustomerValid;
@@ -677,17 +721,17 @@ function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
           <Radio className="w-6 h-6 text-blue-500" />
         </div>
         <div>
-          <h2 className="font-bold text-slate-800 text-lg leading-tight">BROADCAST PACKAGE</h2>
-          <p className="text-sm text-slate-400">เลือกแพ็กเกจที่เหมาะกับขนาดธุรกิจของคุณ</p>
+          <h2 className="font-bold text-slate-800 text-xs leading-tight">BROADCAST PACKAGE</h2>
+          <p className="text-xs text-slate-400">เลือกแพ็กเกจที่เหมาะกับขนาดธุรกิจของคุณ</p>
         </div>
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Plan selection */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-3">
+        <p className="text-xs font-semibold text-slate-700 mb-3">
           เลือกแพ็กเกจ <span className="text-red-400">*</span>
         </p>
         <div className="grid grid-cols-2 gap-4">
@@ -709,7 +753,7 @@ function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
 
       <button onClick={() => onProceed({ ...acc.payload, service: "broadcast", plan, customerInfo: ci.customerPayload })}
         disabled={!canSubmit}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-green-100">
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-green-100">
         <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
       </button>
     </div>
@@ -719,9 +763,9 @@ function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
 // ===========================================================================
 // FORM 2 — PREMIUM ID
 // ===========================================================================
-function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
+function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
-  const ci  = useCustomerInfo();
+  const ci  = useCustomerInfo(prefillCustomerInfo);
   const [premiumId, setPremiumId] = useState("");
 
   const canSubmit = acc.isValid && premiumId.trim() !== "" && ci.isCustomerValid;
@@ -735,23 +779,23 @@ function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
           <Crown className="w-6 h-6 text-yellow-500" />
         </div>
         <div>
-          <h2 className="font-bold text-slate-800 text-lg leading-tight">PREMIUM ID</h2>
-          <p className="text-sm text-slate-400">เลือก Premium ID สำหรับ LINE OA ของคุณ</p>
+          <h2 className="font-bold text-slate-800 text-xs leading-tight">PREMIUM ID</h2>
+          <p className="text-xs text-slate-400">เลือก Premium ID สำหรับ LINE OA ของคุณ</p>
         </div>
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Premium ID input */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
         <div>
-          <label htmlFor="premium-id-input" className="block text-sm font-semibold text-slate-700 mb-1">
+          <label htmlFor="premium-id-input" className="block text-xs font-semibold text-slate-700 mb-1">
             Premium ID ที่ต้องการ <span className="text-red-400">*</span>
           </label>
           <p className="text-xs text-slate-400 mb-3">ระบบจะตรวจสอบความพร้อมใช้งานหลังจากส่งคำขอ</p>
           <div className="flex items-center gap-0">
-            <span className="inline-flex items-center px-4 py-3 rounded-l-xl bg-slate-200 border border-r-0 border-slate-300 text-slate-500 font-bold text-sm select-none">
+            <span className="inline-flex items-center px-4 py-3 rounded-l-xl bg-slate-200 border border-r-0 border-slate-300 text-slate-500 font-bold text-xs select-none">
               @
             </span>
             <input
@@ -759,7 +803,7 @@ function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
               value={premiumId.startsWith("@") ? premiumId.slice(1) : premiumId}
               onChange={e => setPremiumId(e.target.value)}
               placeholder="mybrand"
-              className="flex-1 rounded-r-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition"
+              className="flex-1 rounded-r-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition"
             />
           </div>
         </div>
@@ -770,7 +814,7 @@ function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
             <Crown size={16} className="text-yellow-500 shrink-0" />
             <div>
               <p className="text-xs text-slate-400">ตัวอย่าง ID ที่ต้องการ</p>
-              <p className="font-bold text-slate-800 text-sm">{cleanId}</p>
+              <p className="font-bold text-slate-800 text-xs">{cleanId}</p>
             </div>
           </div>
         )}
@@ -785,7 +829,7 @@ function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
 
       <button onClick={() => onProceed({ ...acc.payload, service: "premium", premiumId: cleanId, customerInfo: ci.customerPayload })}
         disabled={!canSubmit}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-yellow-100">
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-yellow-100">
         <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
       </button>
     </div>
@@ -801,9 +845,9 @@ const CHAT_PERIODS = [
   { months: 9, price: 2500, perMonth: 278,  savings: "ประหยัด 16%" },
 ];
 
-function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
+function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
-  const ci  = useCustomerInfo();
+  const ci  = useCustomerInfo(prefillCustomerInfo);
   const [period, setPeriod] = useState(null); // 3 | 6 | 9
 
   const canSubmit  = acc.isValid && period !== null && ci.isCustomerValid;
@@ -817,17 +861,17 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
           <MessageSquare className="w-6 h-6 text-green-500" />
         </div>
         <div>
-          <h2 className="font-bold text-slate-800 text-lg leading-tight">OA CHAT PACKAGE</h2>
-          <p className="text-sm text-slate-400">เลือกระยะเวลาที่เหมาะกับแผนของคุณ</p>
+          <h2 className="font-bold text-slate-800 text-xs leading-tight">OA CHAT PACKAGE</h2>
+          <p className="text-xs text-slate-400">เลือกระยะเวลาที่เหมาะกับแผนของคุณ</p>
         </div>
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Period selection */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-3">
+        <p className="text-xs font-semibold text-slate-700 mb-3">
           ระยะเวลา <span className="text-red-400">*</span>
         </p>
         <div className="grid grid-cols-3 gap-3">
@@ -844,10 +888,10 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
                     {savings}
                   </span>
                 )}
-                <p className={`font-bold text-xl mb-0.5 ${checked ? "text-green-700" : "text-slate-800"}`}>
-                  {months} <span className="text-sm font-normal">เดือน</span>
+                <p className={`font-bold text-[18px] mb-0.5 ${checked ? "text-green-700" : "text-slate-800"}`}>
+                  {months} <span className="text-xs font-normal">เดือน</span>
                 </p>
-                <p className={`font-extrabold text-lg ${checked ? "text-green-700" : "text-slate-700"}`}>
+                <p className={`font-extrabold text-xs ${checked ? "text-green-700" : "text-slate-700"}`}>
                   ฿{price.toLocaleString()}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">฿{perMonth}/เดือน</p>
@@ -860,8 +904,8 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
       {/* Selected summary */}
       {selected && (
         <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-5 py-3">
-          <span className="text-sm text-slate-600">ยอดรวม ({selected.months} เดือน)</span>
-          <span className="font-extrabold text-green-700 text-lg">฿{selected.price.toLocaleString()}</span>
+          <span className="text-xs text-slate-600">ยอดรวม ({selected.months} เดือน)</span>
+          <span className="font-extrabold text-green-700 text-xs">฿{selected.price.toLocaleString()}</span>
         </div>
       )}
 
@@ -870,7 +914,7 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
 
       <button onClick={() => onProceed({ ...acc.payload, service: "chat", period, price: selected?.price, customerInfo: ci.customerPayload })}
         disabled={!canSubmit}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-green-100">
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-green-100">
         <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
       </button>
     </div>
@@ -880,9 +924,9 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
 // ===========================================================================
 // FORM 4 — MESSAGING API
 // ===========================================================================
-function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId }) {
+function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
-  const ci  = useCustomerInfo();
+  const ci  = useCustomerInfo(prefillCustomerInfo);
   const [plan, setPlan] = useState(""); // "starter" | "business"
 
   const canSubmit = acc.isValid && plan !== "" && ci.isCustomerValid;
@@ -895,17 +939,17 @@ function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId }) 
           <Zap className="w-6 h-6 text-purple-500" />
         </div>
         <div>
-          <h2 className="font-bold text-slate-800 text-lg leading-tight">ADDITIONAL MESSAGE</h2>
-          <p className="text-sm text-slate-400">ข้อความเพิ่มเติมสำหรับ LINE Official Account ของคุณ</p>
+          <h2 className="font-bold text-slate-800 text-xs leading-tight">ADDITIONAL MESSAGE</h2>
+          <p className="text-xs text-slate-400">ข้อความเพิ่มเติมสำหรับ LINE Official Account ของคุณ</p>
         </div>
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Plan selection */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-3">
+        <p className="text-xs font-semibold text-slate-700 mb-3">
           เลือกแพ็กเกจ <span className="text-red-400">*</span>
         </p>
         <div className="grid grid-cols-2 gap-4">
@@ -927,7 +971,7 @@ function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId }) 
 
       <button onClick={() => onProceed({ ...acc.payload, service: "api", plan, customerInfo: ci.customerPayload })}
         disabled={!canSubmit}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-sm transition-colors shadow-md shadow-purple-100">
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-purple-100">
         <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
       </button>
     </div>
@@ -937,12 +981,13 @@ function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId }) 
 // ===========================================================================
 // Router (default export)
 // ===========================================================================
-export default function PurchaseValidationHeader({ service, isLocked, entryMode, prefilledBasicId, onProceed }) {
+export default function PurchaseValidationHeader({ service, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onProceed, onUnlockFullMode, onTransferMode }) {
+  const shared = { onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode };
   switch (service?.id) {
-    case "broadcast": return <BroadcastForm   onProceed={onProceed} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />;
-    case "premium":   return <PremiumIdForm   onProceed={onProceed} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />;
-    case "chat":      return <OAChatForm      onProceed={onProceed} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />;
-    case "api":       return <MessagingApiForm onProceed={onProceed} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />;
-    default:          return <BroadcastForm   onProceed={onProceed} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} />;
+    case "broadcast": return <BroadcastForm    {...shared} />;
+    case "premium":   return <PremiumIdForm    {...shared} />;
+    case "chat":      return <OAChatForm       {...shared} />;
+    case "api":       return <MessagingApiForm  {...shared} />;
+    default:          return <BroadcastForm    {...shared} />;
   }
 }
