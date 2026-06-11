@@ -97,15 +97,29 @@ function RadioCard({ id, name, value, checked, onChange, label, sublabel }) {
 // Reveal
 // ---------------------------------------------------------------------------
 function Reveal({ show, children }) {
-  const [render, setRender] = useState(show);
+  const [render,  setRender]  = useState(show);
   const [visible, setVisible] = useState(false);
+  const [stable,  setStable]  = useState(false); // true = animation done, allow overflow-visible for tooltips
+
   useEffect(() => {
-    if (show) { setRender(true); requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true))); }
-    else { setVisible(false); const t = setTimeout(() => setRender(false), 300); return () => clearTimeout(t); }
+    if (show) {
+      setRender(true);
+      setStable(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+    } else {
+      setStable(false);
+      setVisible(false);
+      const t = setTimeout(() => setRender(false), 300);
+      return () => clearTimeout(t);
+    }
   }, [show]);
+
   if (!render) return null;
   return (
-    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${visible ? "opacity-100 max-h-[600px]" : "opacity-0 max-h-0"}`}>
+    <div
+      className={`transition-all duration-300 ease-in-out ${stable ? 'overflow-visible' : 'overflow-hidden'} ${visible ? "opacity-100 max-h-[600px]" : "opacity-0 max-h-0"}`}
+      onTransitionEnd={() => { if (show && visible) setStable(true); }}
+    >
       {children}
     </div>
   );
@@ -341,7 +355,7 @@ function VerifyModal({ state, basicId, onContinue, onTransfer, onRetry }) {
 // AccountSection — shared account fields used across all forms
 // entryMode: null | 'new' | 'transfer'
 // ---------------------------------------------------------------------------
-function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFullMode, onTransferMode }) {
+function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistingUser, onUnlockFullMode, onTransferMode }) {
   if (!isLocked && !entryMode) return null;
 
   const {
@@ -366,8 +380,11 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFu
       <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-5">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลบัญชี</p>
         <div>
-          <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
+          <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
             ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+            <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+              <Info size={13} />
+            </Tooltip>
           </label>
           <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
             placeholder="เช่น My Brand Store"
@@ -415,9 +432,11 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFu
               <span className="text-red-400">*</span>
             </label>
 
-            {/* Demo chips */}
+            {/* Demo chips — @duplicate only shown if user was originally an existing user */}
             <div className="flex flex-wrap gap-1.5 mb-2">
-              {DEMO_CHIPS.map(({ id, label, color }) => (
+              {DEMO_CHIPS.filter(chip =>
+                chip.id !== '@duplicate' || wasExistingUser
+              ).map(({ id, label, color }) => (
                 <button key={id} type="button" onClick={() => handleBasicIdChange(id)}
                   className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${color}`}>
                   {id} · {label}
@@ -472,8 +491,11 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFu
           {/* Display Name — transfer users need this even on the existing path */}
           <Reveal show={entryMode === 'transfer' && (idVerifyState === 'transfer' || idVerifyState === 'success')}>
             <div>
-              <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
+              <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
                 ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+                <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+                  <Info size={13} />
+                </Tooltip>
               </label>
               <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
                 placeholder="เช่น My Brand Store"
@@ -511,8 +533,11 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, onUnlockFu
       {/* Display Name — only shown for new account type */}
       <Reveal show={accountType === "new"}>
         <div>
-          <label htmlFor="acc-display-name" className="block text-xs font-semibold text-slate-700 mb-2">
+          <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
             ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
+            <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+              <Info size={13} />
+            </Tooltip>
           </label>
           <input id="acc-display-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
             placeholder="เช่น My Brand Store"
@@ -706,7 +731,7 @@ function PlanCard({ id, name, checked, onChange, price, unit, features, accent, 
 // ===========================================================================
 // FORM 1 — BROADCAST PACKAGE
 // ===========================================================================
-function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
+function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
   const ci  = useCustomerInfo(prefillCustomerInfo);
   const [plan, setPlan] = useState(""); // "basic" | "pro"
@@ -727,7 +752,7 @@ function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefi
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Plan selection */}
       <div>
@@ -763,7 +788,7 @@ function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefi
 // ===========================================================================
 // FORM 2 — PREMIUM ID
 // ===========================================================================
-function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
+function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
   const ci  = useCustomerInfo(prefillCustomerInfo);
   const [premiumId, setPremiumId] = useState("");
@@ -785,7 +810,7 @@ function PremiumIdForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefi
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Premium ID input */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
@@ -845,7 +870,7 @@ const CHAT_PERIODS = [
   { months: 9, price: 2500, perMonth: 278,  savings: "ประหยัด 16%" },
 ];
 
-function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
+function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
   const ci  = useCustomerInfo(prefillCustomerInfo);
   const [period, setPeriod] = useState(null); // 3 | 6 | 9
@@ -867,7 +892,7 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillC
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Period selection */}
       <div>
@@ -924,7 +949,7 @@ function OAChatForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillC
 // ===========================================================================
 // FORM 4 — MESSAGING API
 // ===========================================================================
-function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode }) {
+function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode }) {
   const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
   const ci  = useCustomerInfo(prefillCustomerInfo);
   const [plan, setPlan] = useState(""); // "starter" | "business"
@@ -945,7 +970,7 @@ function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId, pr
       </div>
 
       {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
 
       {/* Plan selection */}
       <div>
@@ -981,8 +1006,8 @@ function MessagingApiForm({ onProceed, isLocked, entryMode, prefilledBasicId, pr
 // ===========================================================================
 // Router (default export)
 // ===========================================================================
-export default function PurchaseValidationHeader({ service, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onProceed, onUnlockFullMode, onTransferMode }) {
-  const shared = { onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, onUnlockFullMode, onTransferMode };
+export default function PurchaseValidationHeader({ service, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onProceed, onUnlockFullMode, onTransferMode }) {
+  const shared = { onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode };
   switch (service?.id) {
     case "broadcast": return <BroadcastForm    {...shared} />;
     case "premium":   return <PremiumIdForm    {...shared} />;

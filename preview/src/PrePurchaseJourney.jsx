@@ -215,7 +215,7 @@ function LinkAccountModal({ onClose, onUnlock }) {
 //                                      → LOADING (→ auto-redirect)
 // New users skip ACCOUNT_LIST and start at TYPE_SELECTION.
 
-function ManageBasicIdCard({ hasIds, initialStep, transferBasicId, onExit, onUnlockFullMode, onRedirectToPurchase, onGoNewUserPath, onTransferMode }) {
+function ManageBasicIdCard({ hasIds, initialStep, transferBasicId, onExit, onUnlockFullMode, onRedirectToPurchase, onGoToPurchaseAsTransfer, onGoNewUserPath, onTransferMode }) {
   const [step,          setStep]          = useState(initialStep ?? (hasIds ? 'ACCOUNT_LIST' : 'TYPE_SELECTION'))
   const [selectedId,    setSelectedId]    = useState(hasIds ? MOCK_CONNECTED_IDS[0].id : null)
   const [basicId,       setBasicId]       = useState('')
@@ -364,14 +364,14 @@ function ManageBasicIdCard({ hasIds, initialStep, transferBasicId, onExit, onUnl
                     กรุณาซื้อบริการเพื่อเริ่มกระบวนการโอนย้าย
                   </p>
                   <button
-                    onClick={onRedirectToPurchase}
+                    onClick={() => onGoToPurchaseAsTransfer?.()}
                     className="w-full py-3.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-md shadow-green-100 mb-3"
                   >
                     <ShoppingCart size={16} />
                     ไปที่หน้าซื้อบริการ
                   </button>
                   <button
-                    onClick={() => goto('TYPE_SELECTION')}
+                    onClick={() => onGoNewUserPath?.()}
                     className="w-full py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Plus size={15} /> เพิ่ม/เชื่อมต่อ Basic ID
@@ -977,6 +977,10 @@ function PaymentNotificationView({ recentOrder, onBuyService }) {
 // ─── Screen 3: Dashboard ──────────────────────────────────────────────────────
 
 function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLocked, onLogout }) {
+  // True if the user started this session as an existing/full-mode user.
+  // Survives handleGoNewUserPath resets so @duplicate chip stays visible for them.
+  const wasExistingUser = !initLocked
+
   const [activeMenu,    setActiveMenu]    = useState('หน้าหลัก')
   const [toast,         setToast]         = useState(null)
   const [showPurchase,  setShowPurchase]  = useState(false)
@@ -1054,6 +1058,19 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
     setPurchaseStep(1)
     setOrderPayload(null)
     setPurchaseEntryMode('new')
+    setShowPurchase(true)
+    setActiveMenu('ซื้อบริการ')
+  }
+
+  // "ไปที่หน้าซื้อบริการ" from transfer-user ACCOUNT_LIST:
+  // Leave purchaseEntryMode=null so the fallback (!locked && transferBasicId → 'transfer')
+  // is used, giving the form Display Name + Payment Channel fields.
+  const handleGoToPurchaseAsTransfer = () => {
+    setSelectedService(null)
+    setCameFromPicker(false)
+    setPurchaseStep(1)
+    setOrderPayload(null)
+    setPurchaseEntryMode(null)
     setShowPurchase(true)
     setActiveMenu('ซื้อบริการ')
   }
@@ -1225,6 +1242,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
             onExit={() => handleNavClick('หน้าหลัก')}
             onUnlockFullMode={handleUnlock}
             onRedirectToPurchase={handleRedirectToPurchase}
+            onGoToPurchaseAsTransfer={handleGoToPurchaseAsTransfer}
             onGoNewUserPath={handleGoNewUserPath}
             onTransferMode={handleTransferMode}
           />
@@ -1302,6 +1320,7 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                       entryMode={purchaseEntryMode ?? (!locked && transferBasicId ? 'transfer' : null)}
                       prefilledBasicId={transferBasicId}
                       prefillCustomerInfo={!locked && !transferBasicId ? (savedCustomerInfo ?? MOCK_EXISTING_CUSTOMER_INFO) : null}
+                      wasExistingUser={wasExistingUser}
                       onProceed={(p) => {
                         const ref = `ORD-${Date.now().toString().slice(-6)}`
                         setOrderPayload(p)
