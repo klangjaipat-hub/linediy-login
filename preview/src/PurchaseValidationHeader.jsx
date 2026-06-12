@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Info, Radio, Crown, MessageSquare, Zap,
-  CheckCircle2, Building2, ChevronRight, Loader2, Ban, Copy, UserPlus,
+  CheckCircle2, Building2, ChevronRight, Loader2, Ban, Copy, UserPlus, X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -367,7 +367,8 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
     agencyName, setAgencyName,
   } = acc;
 
-  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyModalOpen,  setVerifyModalOpen]  = useState(false);
+  const [showBasicIdGuide, setShowBasicIdGuide] = useState(false);
   useEffect(() => {
     // Don't auto-open modal for pre-seeded transfer state
     if (idVerifyState === 'transfer') return;
@@ -382,7 +383,7 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
         <div>
           <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
             ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-            <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+            <Tooltip text="ชื่อบัญชีที่แสดงให้คนอื่นเห็น โดยตั้งตามชื่อแบรนด์หรือร้านค้าของคุณ">
               <Info size={13} />
             </Tooltip>
           </label>
@@ -426,11 +427,20 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
 
           {/* Basic ID + Verify button */}
           <div>
-            <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
-              Basic ID
-              <Tooltip text="Basic ID คือรหัส @username ของ LINE OA เช่น @myshop — ใช้สำหรับค้นหาและจดจำบัญชีของคุณ"><Info size={14} /></Tooltip>
-              <span className="text-red-400">*</span>
-            </label>
+            <div className="flex items-center gap-1.5 mb-2">
+              <label htmlFor="acc-basic-id" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                Basic ID
+                <Tooltip text="Basic ID คือ ID สุ่ม ประจำบัญชี LINE Official Account (LINE OA)"><Info size={14} /></Tooltip>
+                <span className="text-red-400">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowBasicIdGuide(v => !v)}
+                className="text-xs font-normal text-[#00BB03] hover:text-[#009a02] hover:underline transition-colors"
+              >
+                วิธีดู Basic ID
+              </button>
+            </div>
 
             {/* Demo chips — @duplicate only shown if user was originally an existing user */}
             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -486,6 +496,50 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
                   : "ตรวจสอบ"}
               </button>
             </div>
+
+            {/* "วิธีดู Basic ID" popup modal */}
+            {showBasicIdGuide && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowBasicIdGuide(false)} />
+                <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-800">วิธีดู Basic ID ของ LINE OA</h3>
+                    <button type="button" onClick={() => setShowBasicIdGuide(false)}
+                      className="text-slate-400 hover:text-slate-600 transition-colors">
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-600">📱 ผ่านมือถือ</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs text-slate-500 leading-relaxed">
+                      <li>เปิดแอปพลิเคชัน LINE OA</li>
+                      <li>กดที่ "หน้าหลัก" และกดที่เมนู "ตั้งค่า (Settings)"</li>
+                      <li>กดที่ "บัญชี (Account)"</li>
+                      <li>กดที่ "ID" คุณจะเห็น Basic ID ของคุณ</li>
+                    </ol>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-600">🖥 ผ่านคอมพิวเตอร์ (PC)</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs text-slate-500 leading-relaxed">
+                      <li>เข้าสู่ระบบ LINE OA ที่{' '}
+                        <a href="https://manager.line.biz/" target="_blank" rel="noopener noreferrer"
+                          className="text-[#00BB03] hover:underline">manager.line.biz</a>
+                      </li>
+                      <li>เลือกบัญชีที่คุณต้องการดู Basic ID</li>
+                      <li>คลิกที่ "ตั้งค่า (Settings)" และเลื่อนลงด้านล่าง จะพบส่วนของ "ข้อมูลบัญชี (Account details)"</li>
+                      <li>คุณจะพบ Basic ID ของคุณแสดงอยู่ภายใต้หัวข้อนี้</li>
+                    </ol>
+                  </div>
+
+                  <button type="button" onClick={() => setShowBasicIdGuide(false)}
+                    className="w-full py-2.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] text-white font-semibold text-xs transition-colors">
+                    เข้าใจแล้ว
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Display Name — transfer users need this even on the existing path */}
@@ -493,7 +547,7 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
             <div>
               <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
                 ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-                <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+                <Tooltip text="ชื่อบัญชีที่แสดงให้คนอื่นเห็น โดยตั้งตามชื่อแบรนด์หรือร้านค้าของคุณ">
                   <Info size={13} />
                 </Tooltip>
               </label>
@@ -535,7 +589,7 @@ function AccountSection({ acc, isLocked, entryMode, prefilledBasicId, wasExistin
         <div>
           <label htmlFor="acc-display-name" className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
             ชื่อแสดงผล (Display Name) <span className="text-red-400">*</span>
-            <Tooltip text="ชื่อที่แสดงบน LINE OA ของคุณ เช่น 'My Brand Store' — ผู้ใช้จะเห็นชื่อนี้เมื่อค้นหาหรือแชทกับบัญชีของคุณ">
+            <Tooltip text="ชื่อบัญชีที่แสดงให้คนอื่นเห็น โดยตั้งตามชื่อแบรนด์หรือร้านค้าของคุณ">
               <Info size={13} />
             </Tooltip>
           </label>
