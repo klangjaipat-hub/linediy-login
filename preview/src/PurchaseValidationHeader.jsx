@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Info, Radio, Crown, MessageSquare, Zap,
   CheckCircle2, Building2, ChevronRight, Loader2, Ban, Copy, UserPlus, X,
+  ShoppingBag, ShoppingCart, Store, Calendar,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -245,11 +246,15 @@ function useCustomerInfo(initialData) {
 
   const isPrefilled = !!initialData
 
+  const MAX = 100
+  const noFieldOver100 = [nationalId, firstName, lastName, emailTax, emailQuote, phone, address, street, subdistrict, district].every(f => f.length <= MAX)
+
   const isCustomerValid = isPrefilled || (
     firstName.trim() !== '' && lastName.trim() !== '' &&
     emailTax.trim() !== '' && phone.trim() !== '' &&
     address.trim() !== '' && subdistrict.trim() !== '' &&
-    district.trim() !== '' && province !== '' && postalCode.trim() !== ''
+    district.trim() !== '' && province !== '' && postalCode.trim() !== '' &&
+    noFieldOver100
   )
 
   const customerPayload = {
@@ -630,32 +635,77 @@ function CustomerInfoSection({ ci }) {
 
   // ── Full-mode: show confirmed read-only card ─────────────────────────────
   if (isPrefilled) {
-    const addrLine = [ci.address, ci.street, ci.subdistrict, ci.district, ci.province, ci.postalCode]
-      .filter(Boolean).join(' ')
     return (
-      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5">
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">ข้อมูลผู้ซื้อ</p>
-          <span className="flex items-center gap-1 text-xs text-green-600 font-semibold">
-            <CheckCircle2 size={13} /> ยืนยันแล้ว
+          <p className="text-xs font-semibold text-slate-700">ข้อมูลร้านค้า หรือบริษัท</p>
+          <span className="flex items-center gap-1 text-xs text-green-600 font-semibold cursor-pointer hover:text-green-700 transition-colors">
+            <CheckCircle2 size={13} /> แก้ไขข้อมูลการสั่งซื้อ
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
-          <div>
-            <p className="text-slate-400 mb-0.5">ชื่อ-นามสกุล</p>
-            <p className="font-semibold text-slate-800">{ci.firstName} {ci.lastName}</p>
+
+        <div className="space-y-2 text-xs mb-5">
+          <div className="flex gap-2">
+            <span className="text-slate-400 shrink-0">ประเภทผู้เสียภาษี :</span>
+            <span className="font-semibold text-slate-800">
+              {customerType === 'corporate' ? 'นิติบุคคล' : 'บุคคลธรรมดา'}
+            </span>
+          </div>
+          {nationalId && (
+            <div className="flex gap-2">
+              <span className="text-slate-400 shrink-0">เลขประจำตัวประชาชน :</span>
+              <span className="font-semibold text-slate-800">{nationalId}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-slate-400">ชื่อ </span>
+              <span className="font-semibold text-slate-800">{firstName}</span>
+            </div>
+            <div>
+              <span className="text-slate-400">นามสกุล </span>
+              <span className="font-semibold text-slate-800">{lastName}</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-slate-400 mb-0.5">Email สำหรับส่งในใบกำกับภาษี</p>
+              <p className="font-semibold text-slate-800 break-all">{emailTax}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 mb-0.5">Email สำหรับส่งในใบเสนอราคา</p>
+              <p className="font-semibold text-slate-800 break-all">{emailQuote || emailTax}</p>
+            </div>
           </div>
           <div>
-            <p className="text-slate-400 mb-0.5">เบอร์โทรศัพท์</p>
-            <p className="font-semibold text-slate-800">{ci.phone}</p>
+            <span className="text-slate-400">โทรศัพท์ </span>
+            <span className="font-semibold text-slate-800">{phone}</span>
           </div>
-          <div className="col-span-2">
-            <p className="text-slate-400 mb-0.5">Email (ใบกำกับภาษี)</p>
-            <p className="font-semibold text-slate-800">{ci.emailTax}</p>
+        </div>
+
+        <p className="text-xs font-semibold text-slate-700 mb-2">ที่อยู่ของร้านค้า หรือบริษัท</p>
+        <div className="space-y-2 text-xs">
+          <div className="flex gap-2">
+            <span className="text-slate-400 shrink-0">ที่อยู่</span>
+            <span className="font-semibold text-slate-800">{address}</span>
           </div>
-          <div className="col-span-2">
-            <p className="text-slate-400 mb-0.5">ที่อยู่</p>
-            <p className="font-semibold text-slate-800 leading-relaxed">{addrLine}</p>
+          <div className="flex gap-2">
+            <span className="text-slate-400 shrink-0">ถนน</span>
+            <span className="font-semibold text-slate-800">{street || '-'}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-slate-400">แขวง/ตำบล </span>
+              <span className="font-semibold text-slate-800">{subdistrict}</span>
+            </div>
+            <div>
+              <span className="text-slate-400">จังหวัด </span>
+              <span className="font-semibold text-slate-800">{province}</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-slate-400">รหัสไปรษณีย์ </span>
+            <span className="font-semibold text-slate-800">{postalCode}</span>
           </div>
         </div>
       </div>
@@ -685,7 +735,7 @@ function CustomerInfoSection({ ci }) {
           </label>
         </div>
         <input type="text" value={nationalId} onChange={e => setNationalId(e.target.value)}
-          placeholder="เลขประจำตัวประชาชน"
+          placeholder="เลขประจำตัวประชาชน" maxLength={100}
           className={INPUT_CLS} />
       </div>
 
@@ -694,9 +744,9 @@ function CustomerInfoSection({ ci }) {
         <p className="text-xs font-bold text-slate-700">ข้อมูลผู้ติดต่อ</p>
         <div className="grid grid-cols-2 gap-3">
           <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
-            placeholder="ชื่อ" className={INPUT_CLS} />
+            placeholder="ชื่อ" maxLength={100} className={INPUT_CLS} />
           <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
-            placeholder="นามสกุล" className={INPUT_CLS} />
+            placeholder="นามสกุล" maxLength={100} className={INPUT_CLS} />
         </div>
         <label className="flex items-center gap-2 cursor-pointer w-fit">
           <input type="checkbox" id="ci-same-email" checked={sameEmail}
@@ -706,17 +756,17 @@ function CustomerInfoSection({ ci }) {
         </label>
         <div className="grid grid-cols-2 gap-3">
           <input type="email" value={emailTax} onChange={e => setEmailTax(e.target.value)}
-            placeholder="Email สำหรับส่งใบกำกับภาษี (E-tax Online)"
+            placeholder="Email สำหรับส่งใบกำกับภาษี (E-tax Online)" maxLength={100}
             className={INPUT_CLS} />
           <input type="email"
             value={sameEmail ? emailTax : emailQuote}
             onChange={e => { if (!sameEmail) setEmailQuote(e.target.value) }}
             placeholder="Email สำหรับส่งใบเสนอราคา"
-            disabled={sameEmail}
+            disabled={sameEmail} maxLength={100}
             className={`${INPUT_CLS} ${sameEmail ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`} />
         </div>
         <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-          placeholder="เบอร์โทรศัพท์"
+          placeholder="เบอร์โทรศัพท์" maxLength={100}
           className={INPUT_CLS} />
       </div>
 
@@ -724,17 +774,17 @@ function CustomerInfoSection({ ci }) {
       <div className="space-y-3">
         <p className="text-xs font-bold text-slate-700">ที่อยู่ของร้านค้า หรือบริษัท</p>
         <input type="text" value={address} onChange={e => setAddress(e.target.value)}
-          placeholder="ที่อยู่ (ระบุเลขที่ อาคาร ชั้นที่ ห้องที่ หมู่ หรือซอย)"
+          placeholder="ที่อยู่ (ระบุเลขที่ อาคาร ชั้นที่ ห้องที่ หมู่ หรือซอย)" maxLength={100}
           className={INPUT_CLS} />
         <div className="grid grid-cols-2 gap-3">
           <input type="text" value={street} onChange={e => setStreet(e.target.value)}
-            placeholder="ถนน (ถ้ามี)" className={INPUT_CLS} />
+            placeholder="ถนน (ถ้ามี)" maxLength={100} className={INPUT_CLS} />
           <input type="text" value={subdistrict} onChange={e => setSubdistrict(e.target.value)}
-            placeholder="แขวง/ตำบล" className={INPUT_CLS} />
+            placeholder="แขวง/ตำบล" maxLength={100} className={INPUT_CLS} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <input type="text" value={district} onChange={e => setDistrict(e.target.value)}
-            placeholder="เขต/อำเภอ" className={INPUT_CLS} />
+            placeholder="เขต/อำเภอ" maxLength={100} className={INPUT_CLS} />
           <div className="relative">
             <select value={province} onChange={e => setProvince(e.target.value)}
               className={SELECT_CLS}>
@@ -783,60 +833,535 @@ function PlanCard({ id, name, checked, onChange, price, unit, features, accent, 
 }
 
 // ===========================================================================
+// BROADCAST PACKAGE — helpers, data, sub-components, upgrade modal
+// ===========================================================================
+
+const BROADCAST_PLAN_DATA = {
+  basic: {
+    name: 'Basic',
+    icon: Store,
+    durations: [
+      { months: 3,  price: 3840,  icon: ShoppingBag  },
+      { months: 6,  price: 7680,  icon: ShoppingCart },
+      { months: 12, price: 15360, icon: Store        },
+    ],
+  },
+  pro: {
+    name: 'Pro',
+    icon: Building2,
+    durations: [
+      { months: 3,  price: 7680,  icon: ShoppingBag  },
+      { months: 6,  price: 15360, icon: ShoppingCart },
+      { months: 12, price: 30720, icon: Store        },
+    ],
+  },
+}
+
+function toInputDateStr(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function computeEndDate(dateStr, months) {
+  if (!dateStr || !months) return ''
+  const [y, m] = dateStr.split('-').map(Number)
+  const end = new Date(y, m - 1 + months, 0)
+  return end.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function BroadcastSection({ label, children }) {
+  return (
+    <div className="mb-6">
+      <p className="text-xs font-semibold text-slate-700 mb-2">{label}</p>
+      <hr className="border-slate-200 mb-4" />
+      {children}
+    </div>
+  )
+}
+
+function BroadcastPlanCard({ planKey, name, Icon, selected, onSelect }) {
+  return (
+    <div className={`rounded-2xl border-2 transition-all overflow-hidden ${
+      selected ? 'border-[#00BB03] bg-[#00BB03]' : 'border-slate-200 bg-white'
+    }`}>
+      <div className="flex flex-col items-center justify-center px-6 pt-6 pb-5 gap-3">
+        <div className={`w-[90px] h-[90px] rounded-xl flex items-center justify-center ${selected ? 'bg-white/15' : 'bg-slate-100'}`}>
+          <Icon size={48} className={selected ? 'text-white' : 'text-slate-500'} />
+        </div>
+        <p className={`font-bold text-[20px] ${selected ? 'text-white' : 'text-slate-800'}`}>{name}</p>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={`w-full py-2 rounded-full text-xs font-semibold border-2 transition-colors ${
+            selected
+              ? 'border-white text-white hover:bg-white/10'
+              : 'border-[#00BB03] text-[#00BB03] hover:bg-green-50'
+          }`}
+        >
+          เลือกแพ็กเกจบรอดแคสต์
+        </button>
+        <button type="button" className={`text-xs ${selected ? 'text-white/80 hover:text-white' : 'text-[#00BB03]'} hover:underline`}>
+          อ่านรายละเอียด
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function BroadcastDurationCard({ planName, months, price, Icon, selected, onSelect }) {
+  return (
+    <div
+      onClick={onSelect}
+      className={`cursor-pointer rounded-2xl border-2 transition-all select-none text-center p-4 ${
+        selected ? 'border-[#00BB03] bg-[#00BB03]' : 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
+      <p className={`font-bold text-[15px] mb-3 leading-tight ${selected ? 'text-white' : 'text-slate-800'}`}>
+        {planName} {months} เดือน
+      </p>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 ${selected ? 'bg-white/15' : 'bg-slate-100'}`}>
+        <Icon size={24} className={selected ? 'text-white' : 'text-slate-500'} />
+      </div>
+      <p className={`font-extrabold text-[20px] mb-1 ${selected ? 'text-white' : 'text-green-600'}`}>
+        {price.toLocaleString()} บาท
+      </p>
+      <p className={`text-[10px] leading-snug ${selected ? 'text-white/70' : 'text-slate-400'}`}>
+        *ราคาดังกล่าวไม่รวมภาษีมูลค่าเพิ่ม7%
+      </p>
+    </div>
+  )
+}
+
+// ── UpgradeProModal ──────────────────────────────────────────────────────────
+function UpgradeProModal({ qty, duration, basicDurPrice, proDurPrice, onUpgrade, onDismiss }) {
+  const costBasic     = basicDurPrice + qty * 0.1
+  const costPro       = proDurPrice + Math.max(0, qty - 20000) * 0.06
+  const savings       = Math.round(costBasic - costPro)
+  const basicAddon    = qty * 0.1
+  const proAddon      = Math.max(0, qty - 20000) * 0.06
+  const freeExtra     = Math.min(qty, 20000)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onDismiss} />
+      <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7">
+        <button onClick={onDismiss} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">
+          <X size={18} />
+        </button>
+
+        <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+          <Crown size={28} className="text-yellow-500" />
+        </div>
+
+        <h2 className="text-xs font-bold text-slate-800 text-center mb-1">อัปเกรดเป็น Pro คุ้มค่ากว่า!</h2>
+        <p className="text-xs text-slate-500 text-center mb-5 leading-relaxed">
+          จากจำนวนข้อความที่คุณต้องการ ({qty.toLocaleString()} ข้อความ)<br />
+          แพ็กเกจ Pro คิดราคาถูกกว่า Basic
+        </p>
+
+        {/* Comparison */}
+        <div className="space-y-2 mb-4">
+          {/* Basic */}
+          <div className="rounded-xl border-2 border-slate-200 p-3">
+            <p className="text-xs font-semibold text-slate-600 mb-2">Basic + ข้อความเพิ่มเติม</p>
+            <div className="space-y-1 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>ค่าแพ็กเกจ Basic ({duration} เดือน)</span>
+                <span className="font-semibold text-slate-700">฿{basicDurPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{qty.toLocaleString()} ข้อความ × ฿0.10</span>
+                <span className="font-semibold text-slate-700">฿{basicAddon.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-100 pt-1">
+                <span className="font-bold text-slate-700">รวม</span>
+                <span className="font-bold text-slate-800">฿{Math.round(costBasic).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pro */}
+          <div className="rounded-xl border-2 border-[#00BB03] bg-green-50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-green-700">Pro + ข้อความเพิ่มเติม</p>
+              <span className="text-[10px] bg-[#00BB03] text-white px-2 py-0.5 rounded-full font-bold">แนะนำ</span>
+            </div>
+            <div className="space-y-1 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>ค่าแพ็กเกจ Pro ({duration} เดือน)</span>
+                <span className="font-semibold text-slate-700">฿{proDurPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>{freeExtra.toLocaleString()} ข้อความ รวมอยู่ใน Pro แล้ว</span>
+                <span className="font-semibold">ฟรี</span>
+              </div>
+              {qty > 20000 && (
+                <div className="flex justify-between">
+                  <span>{(qty - 20000).toLocaleString()} ข้อความส่วนเกิน × ฿0.06</span>
+                  <span className="font-semibold text-slate-700">฿{proAddon.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-green-200 pt-1">
+                <span className="font-bold text-green-700">รวม</span>
+                <span className="font-bold text-green-700">฿{Math.round(costPro).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Savings callout */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-center mb-5">
+          <p className="text-xs text-amber-700">
+            อัปเกรดเป็น Pro ประหยัดได้ถึง{' '}
+            <strong className="text-amber-800">฿{savings.toLocaleString()}</strong>
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onDismiss}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors">
+            ไม่ ขอบคุณ
+          </button>
+          <button onClick={onUpgrade}
+            className="flex-1 py-2.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] text-white font-bold text-xs transition-colors shadow-md shadow-green-100">
+            อัปเกรดเป็น Pro
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ===========================================================================
 // FORM 1 — BROADCAST PACKAGE
 // ===========================================================================
 function BroadcastForm({ onProceed, isLocked, entryMode, prefilledBasicId, prefillCustomerInfo, wasExistingUser, onUnlockFullMode, onTransferMode }) {
-  const acc = useAccountForm(isLocked, entryMode, prefilledBasicId);
-  const ci  = useCustomerInfo(prefillCustomerInfo);
-  const [plan, setPlan] = useState(""); // "basic" | "pro"
+  const acc = useAccountForm(isLocked, entryMode, prefilledBasicId)
+  const ci  = useCustomerInfo(prefillCustomerInfo)
 
-  const canSubmit = acc.isValid && plan !== "" && ci.isCustomerValid;
+  const [plan,       setPlan]       = useState(null)
+  const [duration,   setDuration]   = useState(null)
+  const [startDate,  setStartDate]  = useState(toInputDateStr(new Date()))
+
+  const [addlMsg,    setAddlMsg]    = useState(true)
+  const [addlMsgQty, setAddlMsgQty] = useState('')
+  const [premiumId,  setPremiumId]  = useState(false)
+  const [oaChat,     setOaChat]     = useState(false)
+
+  // ── Upgrade suggestion state ────────────────────────────────────────────
+  const [upgradePopupOpen,      setUpgradePopupOpen]      = useState(false)
+  const [popupShownThisSession, setPopupShownThisSession] = useState(false)
+  const [lastTriggerQty,        setLastTriggerQty]        = useState(null)
+  const [bannerDismissed,       setBannerDismissed]       = useState(false)
+
+  // Reset inline banner whenever the plan changes so it reappears if user switches back to Basic
+  useEffect(() => { setBannerDismissed(false) }, [plan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const qty           = parseInt(addlMsgQty || 0)
+  const basicDurPrice = plan && duration ? (BROADCAST_PLAN_DATA.basic.durations.find(d => d.months === duration)?.price ?? 0) : 0
+  const proDurPrice   = plan && duration ? (BROADCAST_PLAN_DATA.pro.durations.find(d => d.months === duration)?.price ?? 0) : 0
+  const costBasic     = basicDurPrice + qty * 0.1
+  const costPro       = proDurPrice + Math.max(0, qty - 20000) * 0.06
+
+  // Plan-aware add-on price: flat rate per message regardless of free quota
+  const addlMsgPrice = addlMsg
+    ? (plan === 'pro' ? qty * 0.06 : qty * 0.1)
+    : 0
+
+  // Savings on the add-on messages if the user were on Pro instead
+  // (Pro's 20k free + 0.06 rate vs Basic's 0.10 rate — always positive when qty > 0)
+  const msgSavings = Math.round(qty * 0.1 - Math.max(0, qty - 20000) * 0.06)
+
+  // Debounced upgrade suggestion trigger
+  useEffect(() => {
+    if (plan !== 'basic' || !addlMsg || !duration) return
+    if (qty < 15000) return
+    if (costBasic <= costPro) return
+
+    const timer = setTimeout(() => {
+      const isSignificant = lastTriggerQty === null || Math.abs(qty - lastTriggerQty) >= 5000
+      if (!popupShownThisSession || isSignificant) {
+        setUpgradePopupOpen(true)
+        setPopupShownThisSession(true)
+        setLastTriggerQty(qty)
+      }
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [addlMsgQty, plan, addlMsg, duration]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleUpgradeToPro = () => {
+    setPlan('pro')
+    setUpgradePopupOpen(false)
+    if (qty > 20000) setAddlMsgQty(String(qty - 20000))
+    else if (qty > 0) setAddlMsgQty('0')
+    setPopupShownThisSession(false)
+    setLastTriggerQty(null)
+  }
+
+  const handleBannerUpgrade = () => {
+    setPlan('pro')
+    setBannerDismissed(true)
+    if (qty > 20000) setAddlMsgQty(String(qty - 20000))
+    else if (qty > 0) setAddlMsgQty('0')
+    setLastTriggerQty(null)
+  }
+
+  const endDate   = computeEndDate(startDate, duration)
+  const canSubmit = acc.isValid && plan !== null && duration !== null && ci.isCustomerValid
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Service header */}
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-          <Radio className="w-6 h-6 text-blue-500" />
-        </div>
-        <div>
-          <h2 className="font-bold text-slate-800 text-xs leading-tight">BROADCAST PACKAGE</h2>
-          <p className="text-xs text-slate-400">เลือกแพ็กเกจที่เหมาะกับขนาดธุรกิจของคุณ</p>
-        </div>
+    <div className="max-w-2xl">
+      {upgradePopupOpen && (
+        <UpgradeProModal
+          qty={qty}
+          duration={duration}
+          basicDurPrice={basicDurPrice}
+          proDurPrice={proDurPrice}
+          onUpgrade={handleUpgradeToPro}
+          onDismiss={() => setUpgradePopupOpen(false)}
+        />
+      )}
+
+      {/* Page title */}
+      <div className="mb-5">
+        <h1 className="text-[22px] font-bold text-black">ซื้อแพ็กเกจบรอดแคสต์</h1>
+        <p className="text-xs text-slate-500 mt-0.5">เลือกแพ็กเกจบรอดแคสต์ที่คุณต้องการ</p>
       </div>
+      <hr className="border-slate-200 mb-6" />
 
-      {/* Account */}
-      <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+      {/* Account (locked / transfer users only) */}
+      {(isLocked || entryMode) && (
+        <div className="mb-6">
+          <AccountSection acc={acc} isLocked={isLocked} entryMode={entryMode} prefilledBasicId={prefilledBasicId} wasExistingUser={wasExistingUser} onUnlockFullMode={onUnlockFullMode} onTransferMode={onTransferMode} />
+        </div>
+      )}
 
-      {/* Plan selection */}
-      <div>
-        <p className="text-xs font-semibold text-slate-700 mb-3">
-          เลือกแพ็กเกจ <span className="text-red-400">*</span>
-        </p>
+      {/* ── 1. Plan selection ── */}
+      <BroadcastSection label="เลือกแพ็กเกจ">
         <div className="grid grid-cols-2 gap-4">
-          <PlanCard
-            id="plan-basic" checked={plan === "basic"} onChange={() => setPlan("basic")}
-            name="Basic" price="฿1,500" unit="/เดือน" accent="blue"
-            features={["ส่งได้ 1,000 ข้อความ/เดือน", "รายงานสรุปรายเดือน", "รองรับ Rich Message"]}
-          />
-          <PlanCard
-            id="plan-pro" checked={plan === "pro"} onChange={() => setPlan("pro")}
-            name="Pro" price="฿3,000" unit="/เดือน" accent="blue" badge="แนะนำ"
-            features={["ส่งข้อความไม่จำกัด", "รายงาน Advanced Analytics", "รองรับ Video Message", "Priority Support"]}
-          />
+          {Object.entries(BROADCAST_PLAN_DATA).map(([key, p]) => (
+            <BroadcastPlanCard
+              key={key}
+              planKey={key}
+              name={p.name}
+              Icon={p.icon}
+              selected={plan === key}
+              onSelect={() => { setPlan(key); setDuration(null) }}
+            />
+          ))}
+        </div>
+      </BroadcastSection>
+
+      {/* ── 2. Duration ── */}
+      {plan && (
+        <BroadcastSection label="เลือกจำนวนเดือนที่คุณต้องการ">
+          <div className="grid grid-cols-3 gap-3">
+            {BROADCAST_PLAN_DATA[plan].durations.map(({ months, price, icon: DIcon }) => (
+              <BroadcastDurationCard
+                key={months}
+                planName={BROADCAST_PLAN_DATA[plan].name}
+                months={months}
+                price={price}
+                Icon={DIcon}
+                selected={duration === months}
+                onSelect={() => setDuration(months)}
+              />
+            ))}
+          </div>
+        </BroadcastSection>
+      )}
+
+      {/* ── 3. Date ── */}
+      {duration && (
+        <BroadcastSection label="เลือกวันที่ต้องการเปิดใช้งานแพ็กเกจ">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1.5">วันที่เริ่มใช้งาน</label>
+              <div className="relative">
+                <input
+                  type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition pr-10"
+                />
+                <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1.5">วันที่แพ็กเกจหมดอายุ</label>
+              <input
+                type="text" value={endDate} readOnly
+                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs text-slate-500 outline-none cursor-not-allowed"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-red-500">หมายเหตุ</p>
+            {[
+              'กรณีต้องการเริ่มใช้งานใน วันมะรืนหรือวันใดก็ตาม ระบบจะดำเนินการเปิดให้บริการในวันที่กำหนดไว้',
+              'สำหรับลูกค้าที่ย้ายมาจาก Agency อื่น ถ้าหากแพ็กเกจเดิมยังมีอยู่สามารถกำหนดวันที่เริ่มใช้งานได้ตั้งแต่วันที่แพ็กเกจเดิมหมดอายุ',
+              'แพ็กเกจบรอดแคสต์จะเริ่มบริการตั้งแต่วันที่ 1 เพราะ LINE Thailand จะบริการตั้งแต่วันที่บรอดแคสต์ใช้งานบน วันที่สิ้นเดือนเสมอ (เช่น เริ่มใช้วันที่ 16 มีนาคม อายุการใช้งานของเดือนมีนาคมจะถือตั้งแต่วันที่ 16-31 มีนาคม)',
+            ].map((note, i) => (
+              <p key={i} className="text-xs text-red-500 leading-relaxed">* {note}</p>
+            ))}
+          </div>
+        </BroadcastSection>
+      )}
+
+      {/* ── 4. Add-on services ── */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs font-semibold text-slate-700">
+            เลือกบริการเสริมที่คุณต้องการ <span className="font-normal">(เลือกได้มากกว่า 1 อย่าง)</span>
+          </p>
+          <Tooltip text="บริการเสริมที่สามารถซื้อเพิ่มเติมควบคู่กับ Broadcast Package">
+            <Info size={13} />
+          </Tooltip>
+        </div>
+        <div className="space-y-3">
+          {/* ข้อความเพิ่มเติม */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors">
+              <input type="checkbox" checked={addlMsg} onChange={e => setAddlMsg(e.target.checked)}
+                className="accent-green-500 w-4 h-4 shrink-0" />
+              <span className="text-xs font-medium text-slate-800">
+                ข้อความเพิ่มเติม (ข้อความละ {plan === 'pro' ? '0.06' : '0.1'} บาท)
+              </span>
+            </label>
+            {addlMsg && (
+              <div className="px-4 pb-4 border-t border-slate-100 bg-slate-50">
+                <div className="relative mt-3">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={addlMsgQty}
+                    onChange={e => setAddlMsgQty(e.target.value.replace(/\D/g, ''))}
+                    placeholder="จำนวนข้อความเพิ่มเติม ที่ต้องการซื้อ"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition pr-28"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-green-600 pointer-events-none">
+                    {addlMsgPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท
+                  </span>
+                </div>
+                {/* ── Inline Pro upsell banner ── */}
+                {plan === 'basic' && qty > 0 && !bannerDismissed && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <div className="flex">
+                      {/* Left accent bar */}
+                      <div className="w-[3px] bg-[#00BB03] shrink-0" />
+
+                      <div className="flex-1 px-3.5 pt-3 pb-3">
+                        {/* Header row */}
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Crown size={13} className="text-yellow-500 shrink-0" />
+                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                              Broadcast Pro
+                            </span>
+                            <span className="text-[9px] font-bold text-white bg-[#00BB03] px-1.5 py-0.5 rounded uppercase tracking-wide leading-none">
+                              แนะนำ
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setBannerDismissed(true)}
+                            aria-label="ปิด"
+                            className="text-slate-300 hover:text-slate-500 transition-colors"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+
+                        {/* Savings headline */}
+                        <p className="text-[13px] font-bold text-slate-800 leading-tight mb-2.5">
+                          ประหยัดค่าข้อความได้{' '}
+                          <span className="text-[#00BB03]">฿{msgSavings.toLocaleString()}</span>
+                          {' '}เมื่ออัปเกรดเป็น Pro
+                        </p>
+
+                        {/* Benefit bullets */}
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3.5 h-3.5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#00BB03]" />
+                            </div>
+                            <span className="text-[10px] text-slate-500">
+                              ฟรี <span className="font-semibold text-slate-700">35,000</span> ข้อความ
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3.5 h-3.5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#00BB03]" />
+                            </div>
+                            <span className="text-[10px] text-slate-500">
+                              ส่วนเกินเพียง <span className="font-semibold text-slate-700">0.06</span> บาท/ข้อความ
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleBannerUpgrade}
+                            className="text-[11px] font-bold text-white bg-[#00BB03] hover:bg-[#009a02] px-4 py-2 rounded-lg transition-colors"
+                          >
+                            อัปเกรดเป็น Pro
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBannerDismissed(true)}
+                            className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            ยกเลิก
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-xs text-slate-400">* ราคาดังกล่าวไม่รวมภาษีมูลค่าเพิ่ม 7%</p>
+                  <p className="text-xs text-slate-400">** ข้อความเพิ่มเติม หากใช้ไม่หมดจะถูกตัดดอกตามระยะเวลาที่ถือกับแพ็กเกจหลักเข้ามา</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Premium ID */}
+          <label className="flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked={premiumId} onChange={e => setPremiumId(e.target.checked)}
+              className="accent-green-500 w-4 h-4 shrink-0" />
+            <span className="text-xs font-medium text-slate-800">Premium ID (444 บาท)</span>
+          </label>
+
+          {/* OA Chat Package */}
+          <label className="flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+            <input type="checkbox" checked={oaChat} onChange={e => setOaChat(e.target.checked)}
+              className="accent-green-500 w-4 h-4 shrink-0" />
+            <span className="text-xs font-medium text-slate-800">OA Chat Package</span>
+          </label>
         </div>
       </div>
 
-      {/* Customer info */}
-      <CustomerInfoSection ci={ci} />
+      {/* ── 5. Customer info ── */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-slate-700 mb-3">ตรวจสอบข้อมูลของท่านให้ครบถ้วน</p>
+        <CustomerInfoSection ci={ci} />
+      </div>
 
-      <button onClick={() => onProceed({ ...acc.payload, service: "broadcast", plan, customerInfo: ci.customerPayload })}
+      <button
+        onClick={() => onProceed({
+          ...acc.payload, service: 'broadcast', plan, duration, startDate, endDate,
+          addons: { additionalMessages: addlMsg, additionalMsgQty: addlMsgQty ? parseInt(addlMsgQty) : 0, premiumId, oaChat },
+          customerInfo: ci.customerPayload,
+        })}
         disabled={!canSubmit}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-green-100">
-        <CheckCircle2 size={16} /> ยืนยันคำสั่งซื้อ
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#00BB03] hover:bg-[#009a02] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition-colors shadow-md shadow-green-100"
+      >
+        <CheckCircle2 size={16} /> ยืนยัน
       </button>
     </div>
-  );
+  )
 }
 
 // ===========================================================================

@@ -1310,9 +1310,11 @@ function DashboardScreen({ user, selectedAccount: initAccount, isLocked: initLoc
                 {/* Service form */}
                 {purchaseStep === 1 && selectedService && (
                   <>
-                    <h2 className="text-[18px] font-bold text-gray-800 mb-5">
-                      ซื้อบริการ — {selectedService.title}
-                    </h2>
+                    {selectedService.id !== 'broadcast' && (
+                      <h2 className="text-[18px] font-bold text-gray-800 mb-5">
+                        ซื้อบริการ — {selectedService.title}
+                      </h2>
+                    )}
                     <PurchaseValidationHeader
                       key={`${selectedService?.id}-${transferBasicId ?? 'none'}`}
                       service={selectedService}
